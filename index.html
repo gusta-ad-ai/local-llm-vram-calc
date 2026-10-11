@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="パラメータ数と量子化から、ローカルLLMに必要なVRAMと生成速度の上限をスペック表だけで見積もる計算機。">
+<title>ローカルLLM VRAM計算機</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: a datasheet. Inputs on the left as a spec form, the answer on the right as a readout; stacks to one column on phones. */
+:root{
+  --bg:#f3f4f1; --panel:#ffffff; --ink:#1d2329; --muted:#5d6670; --line:#d6dad6;
+  --accent:#2453c8; --accent-ink:#ffffff;
+  --ok:#1f7a4d; --ok-bg:#e3f2ea; --warn:#9a6200; --warn-bg:#fbf0d9; --bad:#b3261e; --bad-bg:#f8e1df;
+  --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14171b; --panel:#1c2026; --ink:#e6e9ec; --muted:#9aa3ad; --line:#2e343c;
+  --accent:#7aa2ff; --accent-ink:#0d1220;
+  --ok:#6fd3a0; --ok-bg:#16302a; --warn:#f0c065; --warn-bg:#352a14; --bad:#ff8a80; --bad-bg:#3a1c1b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14171b; --panel:#1c2026; --ink:#e6e9ec; --muted:#9aa3ad; --line:#2e343c;
+  --accent:#7aa2ff; --accent-ink:#0d1220;
+  --ok:#6fd3a0; --ok-bg:#16302a; --warn:#f0c065; --warn-bg:#352a14; --bad:#ff8a80; --bad-bg:#3a1c1b; color-scheme:dark}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.7;padding-inline:16px;padding-block:28px 48px}
+.wrap{max-width:1080px;margin:0 auto;display:grid;gap:24px}
+header h1{font-size:1.6rem;line-height:1.3;margin:0;text-wrap:balance;letter-spacing:.01em}
+header p{margin:.4rem 0 0;color:var(--muted);max-width:64ch}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:24px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;display:grid;gap:16px;min-width:0}
+.panel h2{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+label{display:block;font-weight:500;font-size:.92rem;margin-bottom:4px}
+.hint{font-size:.8rem;color:var(--muted);margin-top:4px}
+input,select{width:100%;font:inherit;font-family:var(--f-mono);font-size:.95rem;padding:9px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:460px){.row2,.row3{grid-template-columns:1fr}}
+.check{display:flex;gap:8px;align-items:center;font-weight:500;font-size:.92rem}
+.check input{width:auto}
+details{border-top:1px dashed var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:500;font-size:.92rem}
+details .inner{display:grid;gap:12px;margin-top:12px}
+.note{font-size:.84rem;padding:10px 12px;border-radius:4px;background:var(--warn-bg);color:var(--warn)}
+.note[hidden]{display:none}
+.big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.big .n{font-family:var(--f-mono);font-size:2.4rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.big .u{color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
+th{font-weight:500;color:var(--muted);font-size:.78rem;letter-spacing:.04em}
+td.num{font-family:var(--f-mono);text-align:right}
+.tbl{overflow-x:auto}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)}.p-warn{background:var(--warn-bg);color:var(--warn)}.p-bad{background:var(--bad-bg);color:var(--bad)}
+.bar{height:10px;border-radius:2px;background:var(--line);overflow:hidden;display:flex}
+.bar span{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.c-w{background:var(--accent)}.c-k{background:var(--ok)}.c-o{background:var(--muted)}
+.speed .n{font-size:1.8rem}
+ul.why{margin:0;padding-left:1.1em;display:grid;gap:8px;font-size:.88rem}
+ul.why b{font-weight:600}
+code{font-family:var(--f-mono);font-size:.86em}
+.formula{font-family:var(--f-mono);font-size:.82rem;color:var(--muted);background:var(--bg);border-radius:4px;padding:10px 12px;overflow-x:auto;white-space:pre}
+button{font:inherit;font-size:.86rem;font-weight:500;padding:8px 14px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer}
+footer{font-size:.8rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <h1>ローカルLLM VRAM計算機</h1>
+    <p>モデルの大きさと量子化から、必要なVRAMを計算します。メモリ帯域を入れると、生成速度の<b>上限</b>も出ます。どれも<b>スペック表からの見積もり</b>で、実測ではありません。外れる条件は下にまとめています。</p>
+  </header>
+
+  <div class="grid">
+    <form class="panel" id="f" autocomplete="off">
+      <h2>入力</h2>
+      <div>
+        <label for="preset">モデルを選ぶ</label>
+        <select id="preset">
+          <option value="">自分で入力する</option>
+          <optgroup label="Qwen3.5〜3.8（新しい作り）">
+            <option value="q384">Qwen3.5 4B</option>
+            <option value="q359">Qwen3.5 9B</option>
+            <option value="q3827">Qwen3.8 27B</option>
+            <option value="q3635a3">Qwen3.6 35B-A3B（MoE）</option>
+          </optgroup>
+          <optgroup label="Qwen3">
+            <option value="q4">Qwen3 4B</option>
+            <option value="q8" selected>Qwen3 8B</option>
+            <option value="q14">Qwen3 14B</option>
+            <option value="q32">Qwen3 32B</option>
+            <option value="q30a3">Qwen3 30B-A3B（MoE）</option>
+          </optgroup>
+          <optgroup label="定番・その他">
+            <option value="l318">Llama 3.1 8B</option>
+            <option value="goss20">gpt-oss 20B（MoE）</option>
+          </optgroup>
+          <optgroup label="Nemotron（NVIDIA）">
+            <option value="n4">Nemotron 3 Nano 4B</option>
+            <option value="n30">Nemotron 3 Nano 30B-A3B（MoE）</option>
+            <option value="nl30">Nemotron 3.5 Lightning 30B-A3B（MoE）</option>
+          </optgroup>
+          <optgroup label="Gemma 4">
+            <option value="ge4">Gemma 4 E4B</option>
+            <option value="g12">Gemma 4 12B</option>
+            <option value="g26a4">Gemma 4 26B-A4B（MoE）</option>
+            <option value="g31">Gemma 4 31B</option>
+          </optgroup>
+        </select>
+        <div class="hint" id="presetNote">値は配布元（Hugging Face）のモデルカードと config.json から取っています。</div>
+      </div>
+      <div>
+        <label for="name">モデル名（一覧に無いとき）</label>
+        <input id="name" value="" placeholder="例: Llama 3.1 8B">
+        <div class="hint">名前から数字を拾ってパラメータ数に入れます。<b>名前の数字は実際のパラメータ数と違うことがあります。</b>必ず下の欄を確かめてください。</div>
+      </div>
+      <p class="note" id="nameWarn" hidden></p>
+      <div class="row2">
+        <div>
+          <label for="params">パラメータ数（B＝10億）</label>
+          <input id="params" type="number" min="0.1" step="0.1" value="8">
+        </div>
+        <div>
+          <label for="quant">量子化</label>
+          <select id="quant">
+            <option value="16,16">FP16 / BF16（16bit）</option>
+            <option value="8.5,8.6">Q8_0（約8.5bit）</option>
+            <option value="6.56,6.7">Q6_K（約6.6bit）</option>
+            <option value="5.5,6.0">Q5_K_M（約5.5〜6bit）</option>
+            <option value="4.75,5.7" selected>Q4_K_M（約4.75〜5.7bit）</option>
+            <option value="4.5,4.7">Q4_0（約4.5bit）</option>
+            <option value="4.25,4.6">MXFP4（約4.3bit・gpt-oss の配布形式）</option>
+            <option value="3.9,4.4">Q3_K_M（約4bit）</option>
+            <option value="2.6,3.4">Q2_K（約3bit）</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:-8px">bit数に幅があるのは、層ごとに精度を変える方式だからです。小さいモデルほど上限側に寄ります（4Bの Q4_K_M で約5.7bit相当の実例あり）。</div>
+      <div>
+        <label for="ctx">会話の長さ（コンテキスト・トークン数）</label>
+        <select id="ctx">
+          <option value="2048">2,048</option>
+          <option value="4096">4,096</option>
+          <option value="8192" selected>8,192</option>
+          <option value="16384">16,384</option>
+          <option value="32768">32,768</option>
+          <option value="131072">131,072</option>
+        </select>
+        <div class="hint">長くするほど、会話の記憶（KVキャッシュ）のぶんVRAMが増えます。</div>
+      </div>
+      <div>
+        <label class="check"><input type="checkbox" id="moe"> VRAMと速度で数字が違うモデル（MoE・Gemma の E 型）</label>
+        <div class="row2" id="moeRow" hidden style="margin-top:8px">
+          <div>
+            <label for="active">1トークンで使うパラメータ数（B）</label>
+            <input id="active" type="number" min="0.1" step="0.1" value="3">
+          </div>
+          <div class="hint" style="align-self:end">VRAMには<b>全体</b>が載る必要があります。速度に効くのは<b>使う分</b>だけです。</div>
+        </div>
+      </div>
+      <div>
+        <label for="bw">GPUのメモリ帯域（GB/s・任意）</label>
+        <input id="bw" type="number" min="1" step="1" placeholder="スペック表の「メモリ帯域」">
+        <div class="hint">入れると生成速度の上限を出します。製品ページの仕様欄にある数字です。書かれていなければ「バス幅（bit）÷ 8 × メモリ速度（Gbps）」で求められます。</div>
+      </div>
+      <details>
+        <summary>モデルの構造がわかるなら（KVキャッシュを正確に）</summary>
+        <div class="inner">
+          <div class="hint">モデルカードや <code>config.json</code> の値。空欄なら多めの目安で計算します。</div>
+          <div class="row3">
+            <div><label for="layers">層の数</label><input id="layers" type="number" min="1" placeholder="num_hidden_layers"></div>
+            <div><label for="kvh">KVヘッド数</label><input id="kvh" type="number" min="1" placeholder="num_key_value_heads"></div>
+            <div><label for="hd">ヘッドの次元</label><input id="hd" type="number" min="1" placeholder="例: 128"></div>
+          </div>
+        </div>
+      </details>
+    </form>
+
+    <section class="panel" aria-live="polite">
+      <h2>必要なVRAM</h2>
+      <div class="big"><span class="n" id="total">–</span><span class="u">GB 前後</span></div>
+      <div>
+        <div class="bar" aria-hidden="true"><span class="c-w" id="bw1"></span><span class="c-k" id="bk1"></span><span class="c-o" id="bo1"></span></div>
+        <div class="legend" style="margin-top:6px"><span><i class="c-w"></i>モデル本体 <b id="lw">–</b></span><span><i class="c-k"></i>会話の記憶 <b id="lk">–</b></span><span><i class="c-o"></i>動かすための余白 <b id="lo">–</b></span></div>
+      </div>
+
+      <div class="tbl">
+        <table>
+          <thead><tr><th>GPUのVRAM</th><th>判定</th><th style="text-align:right">残り</th></tr></thead>
+          <tbody id="tiers"></tbody>
+        </table>
+      </div>
+
+      <div class="speed" id="speedBox">
+        <h2 style="margin-bottom:6px">生成速度の上限</h2>
+        <div class="big"><span class="n" id="spd">–</span><span class="u" id="spdU">帯域を入れると出ます</span></div>
+        <div class="hint" id="spdNote"></div>
+      </div>
+
+      <div class="formula" id="formula"></div>
+      <div><button type="button" id="copy">計算結果をコピー</button> <span class="hint" id="copied"></span></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>この見積もりが外れる条件</h2>
+    <ul class="why">
+      <li><b>名前の数字はパラメータ数とは限らない。</b>Gemma 4 E4B の「E」は effective（実効）で、Googleのモデルカードでは<b>実効4.5B・埋め込み込み8B</b>です。この計算機ではVRAMを安全側に8B分、速度を4.5B分で見積もります（実行環境によってはVRAMはこれより少なくなります）。一覧に無いモデルは、モデルカードで確かめてください。</li>
+      <li><b>Qwen3.5 以降は、4層に3層が「記憶が増えない層」です。</b>会話が長くなっても、増えるのは残り1/4の層の分だけです。固定サイズの状態は小さいため計算に入れていません。</li>
+      <li><b>Nemotron 3 は大半が Mamba 層で、会話の記憶を持つのは4〜6層だけです。</b>名前と中身のずれもあります。Nano 30B-A3B が1トークンで使う分は、公式モデルカードでは3.5Bです。</li>
+      <li><b>Gemma 4 は会話の記憶が小さい作りです。</b>大半の層が直近512〜1,024トークン分しか記憶を持ちません。そのため長い会話でもVRAMがあまり増えません。ただしこれは Ollama や llama.cpp がこの仕組みに対応している場合の数字です。<b>対応していないと、12Bで32kトークンなら記憶は約11GBになります。</b>また 12B・26B・31B は全体を記憶する層でKとVを共有する作りで、計算機は共有しない前提の多めの値を出しています。</li>
+      <li><b>VRAMから溢れると、速度は計算の線から外れて急に落ちます。</b>Ollama や llama.cpp は入りきらない分をメインメモリに逃がして動かします。動きはしますが、遅さは何割というより桁で変わります。「ギリギリ」判定は溢れる側に倒れることがあります。</li>
+      <li><b>画面表示にもVRAMを使います。</b>そのGPUでモニターを映していると、0.3〜1GB程度が先に使われます。表の「残り」から差し引いて見てください。</li>
+      <li><b>速度は上限であって予測値ではありません。</b>実際の速度は計算の上限より遅くなるのが普通で、モデルの作りによっては順番まで入れ替わります。筆者が同じ方法で2つのモデルの速度比を見積もったときは、予測が0.53倍、実測が1.47倍で、<b>2.8倍外れました</b>。</li>
+      <li><b>会話の記憶（KVキャッシュ）の目安は多めです。</b>構造が分からないときは、8Bで1トークンあたり約0.13MBになる式を大きいモデルにもそのまま伸ばしています。大きいモデルほど過大に出ます。正確に出したいときは上の「モデルの構造」を入れてください。</li>
+      <li><b>MoEはVRAMと速度で効く数字が違います。</b>VRAMには全体が要り、速度に効くのは1トークンで使う分だけです。名前の「A3B」のような表記は使う分を指すことが多いですが、これも名前なのでモデルカードで確かめてください。</li>
+    </ul>
+  </section>
+
+  <footer>計算式は画面内に表示しています。数字はすべて目安です。購入前には、使いたいモデルの配布ページにあるファイルサイズも確かめてください。<br>
+  モデル一覧の出典（2026年10月確認）: <a href="https://huggingface.co/Qwen/Qwen3-8B">Qwen3</a>・<a href="https://huggingface.co/Qwen/Qwen3.8-27B">Qwen3.5〜3.8</a> モデルカード（各サイズの config.json）／<a href="https://huggingface.co/google/gemma-4-12B-it">Gemma 4</a>・<a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16">Nemotron 3</a>・<a href="https://huggingface.co/openai/gpt-oss-20b">gpt-oss</a> モデルカード／Llama 3.1 8B は配布元が閲覧制限付きのため、同じファイルの再配布（<a href="https://huggingface.co/unsloth/Llama-3.1-8B-Instruct">unsloth</a>）の config.json（各サイズの config.json）</footer>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const TIERS=[6,8,10,12,16,20,24,32,48];
+  const fmt=(x,d=1)=>Number.isFinite(x)?x.toFixed(d):'–';
+  // 出典: Hugging Face 各モデルのモデルカードと config.json（2026-10 確認）
+  const PRESETS={
+    q4:{name:'Qwen3 4B',p:4.0,L:36,H:8,D:128},
+    q8:{name:'Qwen3 8B',p:8.2,L:36,H:8,D:128},
+    q14:{name:'Qwen3 14B',p:14.8,L:40,H:8,D:128},
+    q32:{name:'Qwen3 32B',p:32.8,L:64,H:8,D:128},
+    q30a3:{name:'Qwen3 30B-A3B',p:30.5,act:3.3,L:48,H:4,D:128},
+    q384:{name:'Qwen3.5 4B',p:4,lin:{F:8,N:32,kvh:4,hd:256}},
+    q359:{name:'Qwen3.5 9B',p:9,lin:{F:8,N:32,kvh:4,hd:256}},
+    q3827:{name:'Qwen3.8 27B',p:27,lin:{F:16,N:64,kvh:4,hd:256}},
+    q3635a3:{name:'Qwen3.6 35B-A3B',p:35,act:3,lin:{F:10,N:40,kvh:2,hd:256}},
+    l318:{name:'Llama 3.1 8B',p:8.0,L:32,H:8,D:128},
+    goss20:{name:'gpt-oss 20B',p:21,act:3.6,hy:{S:12,F:12,kvh:8,hd:64,W:128,gkvh:8,ghd:64,share:1}},
+    n4:{name:'Nemotron 3 Nano 4B',p:4.0,lin:{F:4,N:42,kvh:8,hd:128}},
+    n30:{name:'Nemotron 3 Nano 30B-A3B',p:30,act:3.5,lin:{F:6,N:52,kvh:2,hd:128}},
+    nl30:{name:'Nemotron 3.5 Lightning 30B-A3B',p:30,act:3,lin:{F:6,N:52,kvh:2,hd:128}},
+    ge4:{name:'Gemma 4 E4B',p:8.0,act:4.5,hy:{S:35,F:7,kvh:2,hd:256,W:512,gkvh:2,ghd:512,share:24/42,approx:true}},
+    g12:{name:'Gemma 4 12B',p:11.95,hy:{S:40,F:8,kvh:8,hd:256,W:1024,gkvh:1,ghd:512,share:1}},
+    g26a4:{name:'Gemma 4 26B-A4B',p:25.2,act:3.8,hy:{S:25,F:5,kvh:8,hd:256,W:1024,gkvh:2,ghd:512,share:1}},
+    g31:{name:'Gemma 4 31B',p:30.7,hy:{S:50,F:10,kvh:16,hd:256,W:1024,gkvh:4,ghd:512,share:1}}
+  };
+  let cur=null;
+
+  function applyPreset(){
+    const k=$('preset').value; cur=PRESETS[k]||null;
+    const note=$('presetNote');
+    if(!cur){ note.textContent='下の欄に自分で入力してください。'; calc(); return; }
+    $('name').value=''; $('nameWarn').hidden=true;
+    $('params').value=cur.p;
+    $('moe').checked=!!cur.act; if(cur.act) $('active').value=cur.act;
+    if(cur.lin){
+      $('layers').value=''; $('kvh').value=''; $('hd').value='';
+      note.textContent=cur.name+': '+cur.lin.N+'層のうち'+(cur.lin.N-cur.lin.F)+'層は会話が長くなっても記憶が増えない作り（linear attention／Mamba など）なので、専用の式で計算します。';
+    }else if(cur.hy){
+      $('layers').value=''; $('kvh').value=''; $('hd').value='';
+      note.textContent=cur.name+': '+(cur.hy.S+cur.hy.F)+'層のうち'+cur.hy.S+'層が直近'+cur.hy.W.toLocaleString()+'トークン分だけ記憶する作りなので、会話の記憶は専用の式で計算します。'+(cur.hy.approx?'（E4Bは層の一部が記憶を共有するため近似）':'');
+    }else{
+      $('layers').value=cur.L; $('kvh').value=cur.H; $('hd').value=cur.D;
+      note.textContent=cur.name+': パラメータ数と構造をモデルカード・config.json から入れました。';
+    }
+    calc();
+  }
+
+  function parseName(){
+    const s=$('name').value; const warn=$('nameWarn'); const msgs=[];
+    if(s){ $('preset').value=''; cur=null; $('presetNote').textContent='下の欄に自分で入力してください。'; }
+    const moe=s.match(/(\d+(?:\.\d+)?)\s*[bB]\s*[-_ ]?\s*[aA](\d+(?:\.\d+)?)\s*[bB]/);
+    if(moe){
+      $('params').value=moe[1]; $('moe').checked=true; $('active').value=moe[2];
+      msgs.push('名前から MoE と読みました（全体 '+moe[1]+'B／使う分 '+moe[2]+'B）。名前の表記なので、モデルカードで確かめてください。');
+    }else{
+      const e=s.match(/\b[eE](\d+(?:\.\d+)?)\s*[bB]\b/);
+      const m=s.match(/(\d+(?:\.\d+)?)\s*[bB]\b/);
+      if(e){ msgs.push('「E'+e[1]+'B」の E は effective（実効）です。VRAMに載る全体はこれより大きくなります（例: Gemma 4 E4B は実効4.5B・全体8B）。数字は自動で入れていません。'); }
+      else if(m){ $('params').value=m[1]; }
+    }
+    warn.textContent=msgs.join(' '); warn.hidden=!msgs.length;
+  }
+
+  function kv(P,ctx){
+    if(cur&&cur.lin){
+      const l=cur.lin;
+      return {gb:4*l.F*l.kvh*l.hd*ctx/1e9, how:'全体を記憶する層'+l.F+' × '+l.kvh+'ヘッド × '+l.hd+'次元 × 4byte（残り'+(l.N-l.F)+'層は記憶が増えないため未計上）', exact:true};
+    }
+    if(cur&&cur.hy){
+      const h=cur.hy;
+      const b=4*(h.S*h.kvh*h.hd*Math.min(ctx,h.W)+h.F*h.gkvh*h.ghd*ctx)*h.share;
+      return {gb:b/1e9, how:'直近'+h.W+'トークンだけ記憶する層'+h.S+' ＋ 全体を記憶する層'+h.F+(h.approx?'（共有分を近似）':''), exact:true};
+    }
+    const L=+$('layers').value, H=+$('kvh').value, D=+$('hd').value;
+    if(L>0&&H>0&&D>0) return {gb:(2*L*H*D*2)*ctx/1e9, how:'2 × '+L+'層 × '+H+'ヘッド × '+D+'次元 × 2byte', exact:true};
+    const mb=0.03+0.012*P;
+    return {gb:mb*ctx/1000, how:'約'+fmt(mb,3)+' MB/トークン（多めの目安）', exact:false};
+  }
+
+  function calc(){
+    $('moeRow').hidden=!$('moe').checked;
+    const P=Math.max(0,+$('params').value||0);
+    const [lo,hi]=$('quant').value.split(',').map(Number);
+    const ctx=+$('ctx').value;
+    const wLo=P*lo/8, wHi=P*hi/8;
+    const k=kv(P,ctx); const kvGB=k.gb;
+    const oLo=0.5, oHi=1.0;
+    const tLo=wLo+kvGB+oLo, tHi=wHi+kvGB+oHi, mid=(tLo+tHi)/2;
+
+    $('total').textContent=fmt(tLo)+'〜'+fmt(tHi);
+    $('lw').textContent=fmt(wLo)+'〜'+fmt(wHi)+'GB';
+    $('lk').textContent=fmt(kvGB,2)+'GB'+(k.exact?'':'（多めの目安）');
+    $('lo').textContent='0.5〜1.0GB';
+    const wMid=(wLo+wHi)/2, oMid=0.75, sum=(wMid+kvGB+oMid)||1;
+    $('bw1').style.width=(wMid/sum*100)+'%'; $('bk1').style.width=(kvGB/sum*100)+'%'; $('bo1').style.width=(oMid/sum*100)+'%';
+
+    $('tiers').innerHTML=TIERS.map(v=>{
+      let cls,txt;
+      if(tHi<=v*0.9){cls='p-ok';txt='載る'} else if(tLo<=v){cls='p-warn';txt='ギリギリ'} else {cls='p-bad';txt='載らない'}
+      const rest=v-mid;
+      return '<tr><td class="num" style="text-align:left">'+v+' GB</td><td><span class="pill '+cls+'">'+txt+'</span></td><td class="num">'+(rest>=0?'+':'')+fmt(rest)+' GB</td></tr>';
+    }).join('');
+
+    const bw=+$('bw').value; const split=$('moe').checked;
+    const actP=split?Math.max(0.1,+$('active').value||0):P;
+    const readGB=actP*((lo+hi)/2)/8;
+    if(bw>0&&readGB>0){
+      $('spd').textContent=fmt(bw/readGB,0); $('spdU').textContent='トークン/秒 が上限';
+      $('spdNote').textContent='帯域 '+bw+' GB/s ÷ 1トークンごとに読む大きさ 約'+fmt(readGB,2)+' GB。'+(split?'使う分（'+actP+'B）で計算。':'')+' 実際はこれより遅くなります。長い会話では会話の記憶も毎回読むので、さらに下がります。';
+    }else{ $('spd').textContent='–'; $('spdU').textContent='帯域を入れると出ます'; $('spdNote').textContent=''; }
+
+    $('formula').textContent=
+      'モデル本体 = '+P+'B × '+lo+'〜'+hi+'bit ÷ 8 = '+fmt(wLo)+'〜'+fmt(wHi)+' GB\n'+
+      '会話の記憶 = '+k.how+'（'+ctx.toLocaleString()+' トークン） = '+fmt(kvGB,2)+' GB\n'+
+      '余白       = 0.5〜1.0 GB\n'+
+      '合計       = '+fmt(tLo)+'〜'+fmt(tHi)+' GB';
+  }
+
+  $('preset').addEventListener('change',applyPreset);
+  $('name').addEventListener('input',()=>{parseName();calc();});
+  ['layers','kvh','hd'].forEach(id=>$(id).addEventListener('input',()=>{ if(cur&&(cur.hy||cur.lin)){cur=null;$('preset').value='';$('presetNote').textContent='下の欄に自分で入力してください。';} }));
+  $('f').addEventListener('input',e=>{ if(e.target.id!=='name'&&e.target.id!=='preset') calc(); });
+  $('f').addEventListener('submit',e=>e.preventDefault());
+  $('copy').addEventListener('click',()=>{
+    const label=cur?cur.name:($('name').value||'');
+    const t=(label?label+'\n':'')+$('formula').textContent;
+    navigator.clipboard.writeText(t).then(()=>{$('copied').textContent='コピーしました'},()=>{
+      const r=document.createRange(); r.selectNodeContents($('formula')); const sl=getSelection(); sl.removeAllRanges(); sl.addRange(r);
+      $('copied').textContent='選択しました。Ctrl+Cでコピーしてください';
+    });
+  });
+  applyPreset();
+})();
+</script>
+
+</body>
+</html>
