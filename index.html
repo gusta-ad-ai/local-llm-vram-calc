@@ -142,7 +142,7 @@ footer{font-size:.8rem;color:var(--muted)}
             <option value="5.5,6.0">Q5_K_M（約5.5〜6bit）</option>
             <option value="4.75,5.7" selected>Q4_K_M（約4.75〜5.7bit）</option>
             <option value="4.5,4.7">Q4_0（約4.5bit）</option>
-            <option value="4.25,4.6">MXFP4（約4.3bit・gpt-oss の配布形式）</option>
+            <option value="4.25,4.6">MXFP4（約4.3〜4.6bit・gpt-oss の配布形式）</option>
             <option value="3.9,4.4">Q3_K_M（約4bit）</option>
             <option value="2.6,3.4">Q2_K（約3bit）</option>
           </select>
@@ -221,7 +221,7 @@ footer{font-size:.8rem;color:var(--muted)}
       <li><b>名前の数字はパラメータ数とは限らない。</b>Gemma 4 E4B の「E」は effective（実効）で、Googleのモデルカードでは<b>実効4.5B・埋め込み込み8B</b>です。この計算機ではVRAMを安全側に8B分、速度を4.5B分で見積もります（実行環境によってはVRAMはこれより少なくなります）。一覧に無いモデルは、モデルカードで確かめてください。</li>
       <li><b>Qwen3.5 以降は、4層に3層が「記憶が増えない層」です。</b>会話が長くなっても、増えるのは残り1/4の層の分だけです。固定サイズの状態は小さいため計算に入れていません。</li>
       <li><b>Nemotron 3 は大半が Mamba 層で、会話の記憶を持つのは4〜6層だけです。</b>名前と中身のずれもあります。Nano 30B-A3B が1トークンで使う分は、公式モデルカードでは3.5Bです。</li>
-      <li><b>Gemma 4 は会話の記憶が小さい作りです。</b>大半の層が直近512〜1,024トークン分しか記憶を持ちません。そのため長い会話でもVRAMがあまり増えません。ただしこれは Ollama や llama.cpp がこの仕組みに対応している場合の数字です。<b>対応していないと、12Bで32kトークンなら記憶は約11GBになります。</b>また 12B・26B・31B は全体を記憶する層でKとVを共有する作りで、計算機は共有しない前提の多めの値を出しています。</li>
+      <li><b>Gemma 4 は会話の記憶が小さい作りです。</b>大半の層が直近512〜1,024トークン分しか記憶を持ちません。そのため長い会話でもVRAMがあまり増えません。ただしこれは Ollama や llama.cpp がこの仕組みに対応している場合の数字です。<b>対応していないと、12Bで32kトークンなら記憶は約11GBになります。</b>計算機は llama.cpp が実際に確保する大きさ（直近の窓に、一度に処理する単位512トークンを足した分）で計算しています。</li>
       <li><b>VRAMから溢れると、速度は計算の線から外れて急に落ちます。</b>Ollama や llama.cpp は入りきらない分をメインメモリに逃がして動かします。動きはしますが、遅さは何割というより桁で変わります。「ギリギリ」判定は溢れる側に倒れることがあります。</li>
       <li><b>画面表示にもVRAMを使います。</b>そのGPUでモニターを映していると、0.3〜1GB程度が先に使われます。表の「残り」から差し引いて見てください。</li>
       <li><b>速度は上限であって予測値ではありません。</b>実際の速度は計算の上限より遅くなるのが普通で、モデルの作りによっては順番まで入れ替わります。筆者が同じ方法で2つのモデルの速度比を見積もったときは、予測が0.53倍、実測が1.47倍で、<b>2.8倍外れました</b>。</li>
@@ -231,7 +231,7 @@ footer{font-size:.8rem;color:var(--muted)}
   </section>
 
   <footer>計算式は画面内に表示しています。数字はすべて目安です。購入前には、使いたいモデルの配布ページにあるファイルサイズも確かめてください。<br>
-  モデル一覧の出典（2026年10月確認）: <a href="https://huggingface.co/Qwen/Qwen3-8B">Qwen3</a>・<a href="https://huggingface.co/Qwen/Qwen3.8-27B">Qwen3.5〜3.8</a> モデルカード（各サイズの config.json）／<a href="https://huggingface.co/google/gemma-4-12B-it">Gemma 4</a>・<a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16">Nemotron 3</a>・<a href="https://huggingface.co/openai/gpt-oss-20b">gpt-oss</a> モデルカード／Llama 3.1 8B は配布元が閲覧制限付きのため、同じファイルの再配布（<a href="https://huggingface.co/unsloth/Llama-3.1-8B-Instruct">unsloth</a>）の config.json（各サイズの config.json）</footer>
+  モデル一覧の出典（2026年10月確認）: <a href="https://huggingface.co/Qwen/Qwen3-8B">Qwen3</a>・<a href="https://huggingface.co/Qwen/Qwen3.8-27B">Qwen3.5〜3.8</a> モデルカード（各サイズの config.json）／<a href="https://huggingface.co/google/gemma-4-12B-it">Gemma 4</a>・<a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16">Nemotron 3</a>・<a href="https://huggingface.co/openai/gpt-oss-20b">gpt-oss</a> モデルカード／Llama 3.1 8B は配布元が閲覧制限付きのため、同じファイルの再配布（<a href="https://huggingface.co/unsloth/Llama-3.1-8B-Instruct">unsloth</a>）の config.json</footer>
 </div>
 
 <script>
@@ -251,7 +251,7 @@ footer{font-size:.8rem;color:var(--muted)}
     q3827:{name:'Qwen3.8 27B',p:27,lin:{F:16,N:64,kvh:4,hd:256}},
     q3635a3:{name:'Qwen3.6 35B-A3B',p:35,act:3,lin:{F:10,N:40,kvh:2,hd:256}},
     l318:{name:'Llama 3.1 8B',p:8.0,L:32,H:8,D:128},
-    goss20:{name:'gpt-oss 20B',p:21,act:3.6,hy:{S:12,F:12,kvh:8,hd:64,W:128,gkvh:8,ghd:64,share:1}},
+    goss20:{name:'gpt-oss 20B',p:21,act:3.6,readGB:[2.6,3.7],hy:{S:12,F:12,kvh:8,hd:64,W:128,gkvh:8,ghd:64,share:1}},
     n4:{name:'Nemotron 3 Nano 4B',p:4.0,lin:{F:4,N:42,kvh:8,hd:128}},
     n30:{name:'Nemotron 3 Nano 30B-A3B',p:30,act:3.5,lin:{F:6,N:52,kvh:2,hd:128}},
     nl30:{name:'Nemotron 3.5 Lightning 30B-A3B',p:30,act:3,lin:{F:6,N:52,kvh:2,hd:128}},
@@ -305,8 +305,9 @@ footer{font-size:.8rem;color:var(--muted)}
     }
     if(cur&&cur.hy){
       const h=cur.hy;
-      const b=4*(h.S*h.kvh*h.hd*Math.min(ctx,h.W)+h.F*h.gkvh*h.ghd*ctx)*h.share;
-      return {gb:b/1e9, how:'直近'+h.W+'トークンだけ記憶する層'+h.S+' ＋ 全体を記憶する層'+h.F+(h.approx?'（共有分を近似）':''), exact:true};
+      const win=Math.ceil((h.W+512)/256)*256; // llama.cpp は窓＋処理単位(512)を256単位で確保
+      const b=4*(h.S*h.kvh*h.hd*Math.min(ctx,win)+h.F*h.gkvh*h.ghd*ctx)*h.share;
+      return {gb:b/1e9, how:'直近'+h.W+'（確保は'+win+'）トークンだけ記憶する層'+h.S+' ＋ 全体を記憶する層'+h.F+(h.approx?'（共有分を近似）':''), exact:true};
     }
     const L=+$('layers').value, H=+$('kvh').value, D=+$('hd').value;
     if(L>0&&H>0&&D>0) return {gb:(2*L*H*D*2)*ctx/1e9, how:'2 × '+L+'層 × '+H+'ヘッド × '+D+'次元 × 2byte', exact:true};
@@ -340,10 +341,11 @@ footer{font-size:.8rem;color:var(--muted)}
 
     const bw=+$('bw').value; const split=$('moe').checked;
     const actP=split?Math.max(0.1,+$('active').value||0):P;
-    const readGB=actP*((lo+hi)/2)/8;
+    const fixed=cur&&cur.readGB;
+    const readGB=fixed?(cur.readGB[0]+cur.readGB[1])/2:actP*((lo+hi)/2)/8;
     if(bw>0&&readGB>0){
-      $('spd').textContent=fmt(bw/readGB,0); $('spdU').textContent='トークン/秒 が上限';
-      $('spdNote').textContent='帯域 '+bw+' GB/s ÷ 1トークンごとに読む大きさ 約'+fmt(readGB,2)+' GB。'+(split?'使う分（'+actP+'B）で計算。':'')+' 実際はこれより遅くなります。長い会話では会話の記憶も毎回読むので、さらに下がります。';
+      $('spd').textContent=fixed?(fmt(bw/cur.readGB[1],0)+'〜'+fmt(bw/cur.readGB[0],0)):fmt(bw/readGB,0); $('spdU').textContent='トークン/秒 が上限';
+      $('spdNote').textContent='帯域 '+bw+' GB/s ÷ 1トークンごとに読む大きさ 約'+fmt(readGB,2)+' GB。'+(fixed?'使う分のうち注意の層・出力の層は高い精度のまま配布されているため、読む大きさを約'+cur.readGB[0]+'〜'+cur.readGB[1]+'GBで計算。':(split?'使う分（'+actP+'B）で計算。':''))+' 実際はこれより遅くなります。長い会話では会話の記憶も毎回読むので、さらに下がります。';
     }else{ $('spd').textContent='–'; $('spdU').textContent='帯域を入れると出ます'; $('spdNote').textContent=''; }
 
     $('formula').textContent=
