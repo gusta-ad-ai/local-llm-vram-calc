@@ -26,6 +26,7 @@
   --accent:#7aa2ff; --accent-ink:#0d1220;
   --ok:#6fd3a0; --ok-bg:#16302a; --warn:#f0c065; --warn-bg:#352a14; --bad:#ff8a80; --bad-bg:#3a1c1b; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{color-scheme:light}
 body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.7;padding-inline:16px;padding-block:28px 48px}
@@ -56,7 +57,7 @@ details .inner{display:grid;gap:12px;margin-top:12px}
 table{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
 th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
 th{font-weight:500;color:var(--muted);font-size:.78rem;letter-spacing:.04em}
-td.num{font-family:var(--f-mono);text-align:right}
+td.num{font-family:var(--f-mono);text-align:right;white-space:nowrap}
 .tbl{overflow-x:auto}
 .pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap}
 .p-ok{background:var(--ok-bg);color:var(--ok)}.p-warn{background:var(--warn-bg);color:var(--warn)}.p-bad{background:var(--bad-bg);color:var(--bad)}
@@ -72,6 +73,46 @@ code{font-family:var(--f-mono);font-size:.86em}
 .formula{font-family:var(--f-mono);font-size:.82rem;color:var(--muted);background:var(--bg);border-radius:4px;padding:10px 12px;overflow-x:auto;white-space:pre}
 button{font:inherit;font-size:.86rem;font-weight:500;padding:8px 14px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer}
 footer{font-size:.8rem;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.bar span{transition:width .35s ease}
+/* 2: 会話の長さスライダーと記憶の曲線 */
+input[type=range]{padding:6px 0;border:0;background:transparent;accent-color:var(--accent)}
+.ctxval{font-family:var(--f-mono);font-weight:600}
+.ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:.72rem;color:var(--muted);margin-top:-2px}
+.curve svg{width:100%;height:auto;display:block;overflow:visible}
+.curve .grid line{stroke:var(--line)}
+.curve text{fill:var(--muted);font-family:var(--f-mono);font-size:10px}
+.curve .me{fill:none;stroke:var(--ok);stroke-width:2.5;stroke-linejoin:round}
+.curve .ref{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 4}
+.curve .dot{transition:transform .3s ease}
+.curve .dot circle{fill:var(--ok);stroke:var(--panel);stroke-width:2}
+.curve .rdot circle{fill:var(--muted)}
+.curve .val{fill:var(--ink);font-weight:600}
+.ckey{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.ckey i{display:inline-block;width:16px;height:0;border-top:2.5px solid var(--ok);margin-right:5px;vertical-align:3px}
+.ckey i.r{border-top:1.5px dashed var(--muted)}
+/* 1: GPUの枠に積み上げる */
+.frameHead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.92rem}
+.frame{position:relative;height:38px;margin:14px 0 4px}
+.frame .cap{position:absolute;top:0;bottom:0;left:0;border:2px solid var(--ink);border-radius:3px;pointer-events:none;transition:width .35s ease}
+.frame .seg{position:absolute;top:5px;bottom:5px;transition:left .35s ease,width .35s ease}
+.frame .s-scr{background:repeating-linear-gradient(45deg,var(--muted) 0 2px,transparent 2px 6px);opacity:.6}
+.frame .s-w{transition-delay:.05s}.frame .s-k{transition-delay:.15s}.frame .s-o{transition-delay:.25s}
+.frame .over{position:absolute;top:-3px;bottom:-3px;background:var(--bad-bg);border:1px dashed var(--bad);border-radius:3px;transition:left .35s ease,width .35s ease}
+.frame .l90{position:absolute;top:-8px;bottom:-8px;width:0;border-left:2px dotted var(--warn);transition:left .35s ease}
+.frame .tag{position:absolute;top:-20px;font-family:var(--f-mono);font-size:.7rem;color:var(--warn);transform:translateX(-50%);white-space:nowrap;transition:left .35s ease}
+.fkey{display:flex;gap:14px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:8px}
+.tierBtn{background:transparent;color:var(--ink);border:1px solid var(--line);font-family:var(--f-mono);padding:2px 10px}
+tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+/* 4: どこから来た数字かをたどる */
+[data-part]{cursor:help}
+.hl{outline:2px solid var(--accent);outline-offset:2px}
+.fl{display:block;padding:0 4px;border-radius:3px;transition:background .2s,color .2s}
+.fl.on{background:var(--panel);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
+.legend [data-part]:focus-visible,.frame .seg:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.delta{font-family:var(--f-mono);font-size:.85rem;font-weight:600;padding:1px 9px;border-radius:999px;opacity:0;transition:opacity .3s}
+.delta.show{opacity:1}
+.delta.up{background:var(--warn-bg);color:var(--warn)}.delta.down{background:var(--ok-bg);color:var(--ok)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -89,7 +130,7 @@ footer{font-size:.8rem;color:var(--muted)}
       <h2>入力</h2>
       <div>
         <label for="preset">モデルを選ぶ</label>
-        <select id="preset">
+        <select id="preset" data-uses="w k t">
           <option value="">自分で入力する</option>
           <optgroup label="Qwen3.5〜3.8（新しい作り）">
             <option value="q384">Qwen3.5 4B</option>
@@ -131,11 +172,11 @@ footer{font-size:.8rem;color:var(--muted)}
       <div class="row2">
         <div>
           <label for="params">パラメータ数（B＝10億）</label>
-          <input id="params" type="number" min="0.1" step="0.1" value="8">
+          <input id="params" type="number" min="0.1" step="0.1" value="8" data-uses="w t">
         </div>
         <div>
           <label for="quant">量子化</label>
-          <select id="quant">
+          <select id="quant" data-uses="w t">
             <option value="16,16">FP16 / BF16（16bit）</option>
             <option value="8.5,8.6">Q8_0（約8.5bit）</option>
             <option value="6.56,6.7">Q6_K（約6.6bit）</option>
@@ -150,16 +191,10 @@ footer{font-size:.8rem;color:var(--muted)}
       </div>
       <div class="hint" style="margin-top:-8px">bit数に幅があるのは、層ごとに精度を変える方式だからです。小さいモデルほど上限側に寄ります（4Bの Q4_K_M で約5.7bit相当の実例あり）。</div>
       <div>
-        <label for="ctx">会話の長さ（コンテキスト・トークン数）</label>
-        <select id="ctx">
-          <option value="2048">2,048</option>
-          <option value="4096">4,096</option>
-          <option value="8192" selected>8,192</option>
-          <option value="16384">16,384</option>
-          <option value="32768">32,768</option>
-          <option value="131072">131,072</option>
-        </select>
-        <div class="hint">長くするほど、会話の記憶（KVキャッシュ）のぶんVRAMが増えます。</div>
+        <label for="ctx">会話の長さ（コンテキスト・トークン数）: <span class="ctxval" id="ctxVal">8,192</span></label>
+        <input id="ctx" type="range" min="0" max="7" step="1" value="2" data-uses="k t" aria-describedby="ctxHint">
+        <div class="ticks" aria-hidden="true"><span>2k</span><span>4k</span><span>8k</span><span>16k</span><span>32k</span><span>64k</span><span>128k</span><span>256k</span></div>
+        <div class="hint" id="ctxHint">動かすと、右の「会話の長さと記憶」がその場で変わります。実行環境は、実際に話した長さではなく<b>設定した長さ</b>の分を最初に確保します。</div>
       </div>
       <div>
         <label class="check"><input type="checkbox" id="moe"> VRAMと速度で数字が違うモデル（MoE・Gemma の E 型）</label>
@@ -181,25 +216,49 @@ footer{font-size:.8rem;color:var(--muted)}
         <div class="inner">
           <div class="hint">モデルカードや <code>config.json</code> の値。空欄なら多めの目安で計算します。</div>
           <div class="row3">
-            <div><label for="layers">層の数</label><input id="layers" type="number" min="1" placeholder="num_hidden_layers"></div>
-            <div><label for="kvh">KVヘッド数</label><input id="kvh" type="number" min="1" placeholder="num_key_value_heads"></div>
-            <div><label for="hd">ヘッドの次元</label><input id="hd" type="number" min="1" placeholder="例: 128"></div>
+            <div><label for="layers">層の数</label><input id="layers" type="number" min="1" placeholder="num_hidden_layers" data-uses="k t"></div>
+            <div><label for="kvh">KVヘッド数</label><input id="kvh" type="number" min="1" placeholder="num_key_value_heads" data-uses="k t"></div>
+            <div><label for="hd">ヘッドの次元</label><input id="hd" type="number" min="1" placeholder="例: 128" data-uses="k t"></div>
           </div>
         </div>
       </details>
     </form>
 
-    <section class="panel" aria-live="polite">
+    <section class="panel">
       <h2>必要なVRAM</h2>
-      <div class="big"><span class="n" id="total">–</span><span class="u">GB 前後</span></div>
+      <p class="sr" id="live" aria-live="polite"></p>
+      <div class="big" aria-hidden="true"><span class="n" id="total" data-part="t">–</span><span class="u">GB 前後</span><span class="delta" id="delta"></span></div>
       <div>
-        <div class="bar" aria-hidden="true"><span class="c-w" id="bw1"></span><span class="c-k" id="bk1"></span><span class="c-o" id="bo1"></span></div>
-        <div class="legend" style="margin-top:6px"><span><i class="c-w"></i>モデル本体 <b id="lw">–</b></span><span><i class="c-k"></i>会話の記憶 <b id="lk">–</b></span><span><i class="c-o"></i>動かすための余白 <b id="lo">–</b></span></div>
+        <div class="bar" aria-hidden="true"><span class="c-w" id="bw1" data-part="w"></span><span class="c-k" id="bk1" data-part="k"></span><span class="c-o" id="bo1" data-part="o"></span></div>
+        <div class="legend" style="margin-top:6px"><span data-part="w" tabindex="0"><i class="c-w"></i>モデル本体 <b id="lw">–</b></span><span data-part="k" tabindex="0"><i class="c-k"></i>会話の記憶 <b id="lk">–</b></span><span data-part="o" tabindex="0"><i class="c-o"></i>動かすための余白 <b id="lo">–</b></span></div>
+        <div class="hint">色の帯や数字にカーソルを当てると、下の計算式のどの行から来た数字か、どの入力を使ったかが光ります。</div>
+      </div>
+
+      <div class="curve">
+        <h2 style="margin-bottom:6px">会話の長さと記憶</h2>
+        <svg id="curve" viewBox="0 0 340 170" role="img" aria-labelledby="curveNote"></svg>
+        <div class="ckey" id="ckey"></div>
+        <div class="hint" id="curveNote"></div>
+      </div>
+
+      <div>
+        <div class="frameHead"><b id="fTitle">12 GB のGPUに載せると</b><span class="pill" id="fPill"></span></div>
+        <div class="frame" id="frame" aria-hidden="true">
+          <div class="over" id="fOver"></div>
+          <div class="seg s-scr" id="fScr"></div>
+          <div class="seg s-w c-w" id="fW" data-part="w"></div>
+          <div class="seg s-k c-k" id="fK" data-part="k"></div>
+          <div class="seg s-o c-o" id="fO" data-part="o"></div>
+          <div class="cap" id="fCap"></div>
+          <div class="l90" id="f90"></div><div class="tag" id="f90t">9割</div>
+        </div>
+        <div class="fkey"><span>太枠＝GPUのVRAM</span><span>点線＝ここまでなら載る見込み（9割）</span><span>斜線＝画面表示の分</span><span>赤＝溢れる分</span></div>
+        <label class="check" style="margin-top:8px"><input type="checkbox" id="scr" checked> このGPUで画面も映している（1GB引く）</label>
       </div>
 
       <div class="tbl">
         <table>
-          <thead><tr><th>GPUのVRAM</th><th>判定</th><th style="text-align:right">残り</th></tr></thead>
+          <thead><tr><th>GPUのVRAM（押すと上の枠が切り替わる）</th><th>判定</th><th style="text-align:right">残り</th></tr></thead>
           <tbody id="tiers"></tbody>
         </table>
       </div>
@@ -315,29 +374,112 @@ footer{font-size:.8rem;color:var(--muted)}
     return {gb:mb*ctx/1000, how:'約'+fmt(mb,3)+' MB/トークン（多めの目安）', exact:false};
   }
 
+  // 2: 会話の長さ。スライダーの位置 → トークン数
+  const CTXS=[2048,4096,8192,16384,32768,65536,131072,262144];
+  const getCtx=()=>CTXS[+$('ctx').value]||8192;
+  let gpu=12, prev=null, deltaTimer=0;
+  const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // 比較用: 全層が会話の長さに比例して記憶した場合（hy=実行環境が未対応のとき、lin=仮に全層が記憶する作りだったら）
+  function kvFull(c){
+    if(cur&&cur.lin){ const l=cur.lin; return 4*l.N*l.kvh*l.hd*c/1e9; }
+    if(cur&&cur.hy){ const h=cur.hy; return 4*(h.S*h.kvh*h.hd+h.F*h.gkvh*h.ghd)*c*h.share/1e9; }
+    return null;
+  }
+
+  // 判定: 記事の手順と同じ。(VRAM − 画面の分) の9割以下なら載る見込み、(VRAM − 画面の分) 以下ならギリギリ、超えたら溢れる
+  function judge(v,tLo,tHi){
+    const usable=v-($('scr').checked?1:0);
+    if(tHi<=usable*0.9) return {cls:'p-ok',txt:'載る見込み'};
+    if(tLo<=usable) return {cls:'p-warn',txt:'ギリギリ'};
+    return {cls:'p-bad',txt:'溢れる'};
+  }
+
+  // 4: 数字を古い値から新しい値へ動かす
+  function tween(el,from,to,render){
+    if(reduced()||from==null||!Number.isFinite(from)){ el.textContent=render(to); return; }
+    const t0=performance.now(), d=320;
+    const step=t=>{ const p=Math.min(1,(t-t0)/d), e=1-Math.pow(1-p,3);
+      el.textContent=render(from.map((f,i)=>f+(to[i]-f)*e)); if(p<1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+
+  function drawCurve(P,ctx){
+    const svg=$('curve'), W=340, H=170, L=36, R=10, T=14, B=24;
+    const pts=CTXS.map(c=>({c, me:kv(P,c).gb, ref:kvFull(c)}));
+    const hasRef=pts[0].ref!=null;
+    const ymax=Math.max(...pts.map(p=>Math.max(p.me,hasRef?p.ref:0)))||1;
+    const step=Math.pow(10,Math.floor(Math.log10(ymax)));
+    const top=Math.ceil(ymax/step)*step;
+    const X=c=>L+(Math.log2(c/2048)/7)*(W-L-R), Y=g=>T+(1-g/top)*(H-T-B);
+    const line=k=>pts.map(p=>X(p.c).toFixed(1)+','+Y(p[k]).toFixed(1)).join(' ');
+    let g='<g class="grid">';
+    for(let i=0;i<=4;i++){ const v=top*i/4; g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/><text x="'+(L-4)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+(v<1?v.toFixed(1):Math.round(v))+'</text>'; }
+    g+='</g>';
+    ['2k','8k','32k','128k'].forEach((s,i)=>{ g+='<text x="'+X(2048*Math.pow(4,i))+'" y="'+(H-6)+'" text-anchor="middle">'+s+'</text>'; });
+    g+='<text x="'+(L-4)+'" y="8" text-anchor="end">GB</text>';
+    if(hasRef) g+='<polyline class="ref" points="'+line('ref')+'"/>';
+    g+='<polyline class="me" points="'+line('me')+'"/>';
+    const now=kv(P,ctx).gb, nowRef=kvFull(ctx);
+    if(hasRef) g+='<g class="dot rdot" style="transform:translate('+X(ctx)+'px,'+Y(nowRef)+'px)"><circle r="3.5"/></g>';
+    g+='<g class="dot" id="cdot" style="transform:translate('+X(ctx)+'px,'+Y(now)+'px)"><circle r="5"/><text class="val" x="0" y="-9" text-anchor="'+(ctx>=131072?'end':'middle')+'">'+fmt(now,now<1?2:1)+'GB</text></g>';
+    svg.innerHTML=g;
+    const name=cur?cur.name:'入力したモデル';
+    $('ckey').innerHTML='<span><i></i>'+name+'</span>'+(hasRef?'<span><i class="r"></i>'+(cur.hy?'実行環境が未対応の場合':'仮に全層が記憶する作りだったら')+'</span>':'');
+    let note;
+    if(cur&&cur.hy) note=name+'は大半の層が直近の分だけ記憶する作りなので、長くしても実線はほとんど伸びません。ただし実行環境が対応していないと点線のように増え、'+ctx.toLocaleString()+'トークンで約'+fmt(nowRef)+'GBになります。';
+    else if(cur&&cur.lin) note=name+'は記憶が増えるのが一部の層だけなので、全層が記憶する作り（点線）より伸びがゆるやかです。';
+    else note='このモデルは全部の層が会話の長さに比例して記憶する作りです。長さを倍にすると、記憶もほぼ倍になります。';
+    $('curveNote').textContent='会話の長さ'+ctx.toLocaleString()+'トークンで、会話の記憶は約'+fmt(now,2)+'GB。'+note;
+  }
+
+  function drawFrame(v,wMid,kvGB,oMid,tLo,tHi){
+    const scr=$('scr').checked?1:0, need=scr+wMid+kvGB+oMid;
+    const S=Math.max(v,need)*1.06, pc=x=>(x/S*100)+'%';
+    let x=0; const put=(id,w)=>{ const e=$(id); e.style.left=pc(x); e.style.width=pc(w); x+=w; };
+    put('fScr',scr); put('fW',wMid); put('fK',kvGB); put('fO',oMid);
+    $('fCap').style.width=pc(v);
+    const line=scr+(v-scr)*0.9; $('f90').style.left=pc(line); $('f90t').style.left=pc(line);
+    const ov=$('fOver'); if(need>v){ ov.style.left=pc(v); ov.style.width=pc(need-v); ov.hidden=false; } else { ov.style.width='0'; ov.hidden=true; }
+    const j=judge(v,tLo,tHi);
+    $('fTitle').textContent=v+' GB のGPUに載せると';
+    const pill=$('fPill'); pill.className='pill '+j.cls; pill.textContent=j.txt;
+    $('fW').setAttribute('aria-label','モデル本体 約'+fmt(wMid)+'GB'); $('fK').setAttribute('aria-label','会話の記憶 約'+fmt(kvGB,2)+'GB'); $('fO').setAttribute('aria-label','余白 約0.75GB');
+    return j;
+  }
+
   function calc(){
     $('moeRow').hidden=!$('moe').checked;
     const P=Math.max(0,+$('params').value||0);
     const [lo,hi]=$('quant').value.split(',').map(Number);
-    const ctx=+$('ctx').value;
+    const ctx=getCtx();
+    $('ctxVal').textContent=ctx.toLocaleString(); $('ctx').setAttribute('aria-valuetext',ctx.toLocaleString()+'トークン');
     const wLo=P*lo/8, wHi=P*hi/8;
     const k=kv(P,ctx); const kvGB=k.gb;
     const oLo=0.5, oHi=1.0;
     const tLo=wLo+kvGB+oLo, tHi=wHi+kvGB+oHi, mid=(tLo+tHi)/2;
 
-    $('total').textContent=fmt(tLo)+'〜'+fmt(tHi);
-    $('lw').textContent=fmt(wLo)+'〜'+fmt(wHi)+'GB';
-    $('lk').textContent=fmt(kvGB,2)+'GB'+(k.exact?'':'（多めの目安）');
+    tween($('total'),prev&&[prev.tLo,prev.tHi],[tLo,tHi],a=>fmt(a[0])+'〜'+fmt(a[1]));
+    tween($('lw'),prev&&[prev.wLo,prev.wHi],[wLo,wHi],a=>fmt(a[0])+'〜'+fmt(a[1])+'GB');
+    tween($('lk'),prev&&[prev.kvGB],[kvGB],a=>fmt(a[0],2)+'GB'+(k.exact?'':'（多めの目安）'));
     $('lo').textContent='0.5〜1.0GB';
+    if(prev&&Math.abs(mid-prev.mid)>=0.05){
+      const d=mid-prev.mid, el=$('delta');
+      el.textContent=(d>0?'+':'−')+fmt(Math.abs(d))+'GB'; el.className='delta show '+(d>0?'up':'down');
+      clearTimeout(deltaTimer); deltaTimer=setTimeout(()=>{el.className='delta '+(d>0?'up':'down');},1600);
+    }
+    prev={tLo,tHi,wLo,wHi,kvGB,mid};
     const wMid=(wLo+wHi)/2, oMid=0.75, sum=(wMid+kvGB+oMid)||1;
     $('bw1').style.width=(wMid/sum*100)+'%'; $('bk1').style.width=(kvGB/sum*100)+'%'; $('bo1').style.width=(oMid/sum*100)+'%';
 
+    drawCurve(P,ctx);
+    const j=drawFrame(gpu,wMid,kvGB,oMid,tLo,tHi);
+    const scr=$('scr').checked?1:0;
     $('tiers').innerHTML=TIERS.map(v=>{
-      let cls,txt;
-      if(tHi<=v*0.9){cls='p-ok';txt='載る'} else if(tLo<=v){cls='p-warn';txt='ギリギリ'} else {cls='p-bad';txt='載らない'}
-      const rest=v-mid;
-      return '<tr><td class="num" style="text-align:left">'+v+' GB</td><td><span class="pill '+cls+'">'+txt+'</span></td><td class="num">'+(rest>=0?'+':'')+fmt(rest)+' GB</td></tr>';
+      const t=judge(v,tLo,tHi), rest=v-scr-mid;
+      return '<tr'+(v===gpu?' class="sel"':'')+'><td><button type="button" class="tierBtn" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+' GB</button></td><td><span class="pill '+t.cls+'">'+t.txt+'</span></td><td class="num">'+(rest>=0?'+':'')+fmt(rest)+' GB</td></tr>';
     }).join('');
+    $('live').textContent='必要なVRAM 約'+fmt(tLo)+'〜'+fmt(tHi)+'GB。会話の記憶 約'+fmt(kvGB,2)+'GB。'+gpu+'GBのGPUでは「'+j.txt+'」。';
 
     const bw=+$('bw').value; const split=$('moe').checked;
     const actP=split?Math.max(0.1,+$('active').value||0):P;
@@ -348,12 +490,32 @@ footer{font-size:.8rem;color:var(--muted)}
       $('spdNote').textContent='帯域 '+bw+' GB/s ÷ 1トークンごとに読む大きさ 約'+fmt(readGB,2)+' GB。'+(fixed?'使う分のうち注意の層・出力の層は高い精度のまま配布されているため、読む大きさを約'+cur.readGB[0]+'〜'+cur.readGB[1]+'GBで計算。':(split?'使う分（'+actP+'B）で計算。':''))+' 実際はこれより遅くなります。長い会話では会話の記憶も毎回読むので、さらに下がります。';
     }else{ $('spd').textContent='–'; $('spdU').textContent='帯域を入れると出ます'; $('spdNote').textContent=''; }
 
-    $('formula').textContent=
-      'モデル本体 = '+P+'B × '+lo+'〜'+hi+'bit ÷ 8 = '+fmt(wLo)+'〜'+fmt(wHi)+' GB\n'+
-      '会話の記憶 = '+k.how+'（'+ctx.toLocaleString()+' トークン） = '+fmt(kvGB,2)+' GB\n'+
-      '余白       = 0.5〜1.0 GB\n'+
-      '合計       = '+fmt(tLo)+'〜'+fmt(tHi)+' GB';
+    const lines=[
+      ['w','モデル本体 = '+P+'B × '+lo+'〜'+hi+'bit ÷ 8 = '+fmt(wLo)+'〜'+fmt(wHi)+' GB'],
+      ['k','会話の記憶 = '+k.how+'（'+ctx.toLocaleString()+' トークン） = '+fmt(kvGB,2)+' GB'],
+      ['o','余白       = 0.5〜1.0 GB'],
+      ['t','合計       = '+fmt(tLo)+'〜'+fmt(tHi)+' GB']];
+    const fm=$('formula'); fm.textContent='';
+    lines.forEach(([p,t])=>{ const s=document.createElement('span'); s.className='fl'; s.dataset.part=p; s.textContent=t; fm.appendChild(s); });
+    fm.dataset.text=lines.map(l=>l[1]).join('\n');
+    if(hlPart) setHL(hlPart);
   }
+
+  // 4: カーソルを当てた部分の出どころ（式の行と使った入力）を光らせる
+  let hlPart=null;
+  function setHL(p){
+    hlPart=p;
+    document.querySelectorAll('[data-part]').forEach(e=>{
+      const on=!!p&&(e.dataset.part===p||(p==='t'&&e.classList.contains('fl')));
+      e.classList.toggle(e.classList.contains('fl')?'on':'hl',on&&!(e.id==='total'));
+    });
+    document.querySelectorAll('[data-uses]').forEach(e=>e.classList.toggle('hl',!!p&&e.dataset.uses.split(' ').includes(p)));
+  }
+  const res=document.querySelector('.grid');
+  ['mouseover','focusin'].forEach(ev=>res.addEventListener(ev,e=>{ const t=e.target.closest('[data-part]'); if(t&&!t.matches('input,select')) setHL(t.dataset.part); }));
+  ['mouseout','focusout'].forEach(ev=>res.addEventListener(ev,e=>{ const t=e.target.closest('[data-part]'); if(t&&!(e.relatedTarget&&t.contains(e.relatedTarget))) setHL(null); }));
+  $('tiers').addEventListener('click',e=>{ const b=e.target.closest('.tierBtn'); if(!b) return; gpu=+b.dataset.v; calc(); const nb=$('tiers').querySelector('[data-v="'+gpu+'"]'); if(nb) nb.focus(); });
+  $('scr').addEventListener('change',calc);
 
   $('preset').addEventListener('change',applyPreset);
   $('name').addEventListener('input',()=>{parseName();calc();});
@@ -362,7 +524,7 @@ footer{font-size:.8rem;color:var(--muted)}
   $('f').addEventListener('submit',e=>e.preventDefault());
   $('copy').addEventListener('click',()=>{
     const label=cur?cur.name:($('name').value||'');
-    const t=(label?label+'\n':'')+$('formula').textContent;
+    const t=(label?label+'\n':'')+$('formula').dataset.text;
     navigator.clipboard.writeText(t).then(()=>{$('copied').textContent='コピーしました'},()=>{
       const r=document.createRange(); r.selectNodeContents($('formula')); const sl=getSelection(); sl.removeAllRanges(); sl.addRange(r);
       $('copied').textContent='選択しました。Ctrl+Cでコピーしてください';
