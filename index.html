@@ -125,6 +125,12 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .curve text{fill:var(--muted);font-family:var(--f-mono);font-size:12px}
 .curve .me{fill:none;stroke:var(--ok);stroke-width:2.5;stroke-linejoin:round}
 .curve .ref{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 4}
+.curve .cmp{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round}
+.curve .cdot circle{fill:var(--accent);stroke:var(--panel);stroke-width:2}
+.ckey i.c{border-top-color:var(--accent)}
+.cmpBox{display:grid;gap:6px;margin-bottom:8px}
+.cmpRes{font-size:.88rem;padding:8px 10px;border-radius:4px;background:var(--bg)}
+.cmpRes:empty{display:none}
 .curve .dot{transition:transform .3s ease}
 .curve .dot circle{fill:var(--ok);stroke:var(--panel);stroke-width:2}
 .curve .rdot circle{fill:var(--muted)}
@@ -246,9 +252,11 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
 
       <div class="curve">
         <h2 style="margin-bottom:6px">会話の長さと記憶（GB）</h2>
+        <div class="cmpBox"><label for="cmp" style="margin:0">比べるモデル（同じグラフに重ねる）</label><select id="cmp"><option value="">比べない</option></select></div>
         <svg id="curve" role="img" aria-labelledby="curveNote"></svg>
         <div class="ckey" id="ckey"></div>
         <div class="hint" id="curveNote"></div>
+        <div class="cmpRes" id="cmpRes" aria-live="polite"></div>
         <div class="hint">実行環境は、実際に話した長さではなく<b>設定した長さ</b>の分を最初に確保します。</div>
       </div>
 
@@ -442,6 +450,14 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
   const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // 比較用: 全層が会話の長さに比例して記憶した場合（hy=実行環境が未対応のとき、lin=仮に全層が記憶する作りだったら）
+  // 比較用: プリセットの構造から会話の記憶を出す（式は kv() と同じ）
+  function kvOf(m,c){
+    if(m.lin){ const l=m.lin; return 4*l.F*l.kvh*l.hd*c/1e9; }
+    if(m.hy){ const h=m.hy, win=Math.ceil((h.W+512)/256)*256; return 4*(h.S*h.kvh*h.hd*Math.min(c,win)+h.F*h.gkvh*h.ghd*c)*h.share/1e9; }
+    return 2*m.L*m.H*m.D*2*c/1e9;
+  }
+  const cmpModel=()=>PRESETS[$('cmp').value]||null;
+
   function kvFull(c){
     if(cur&&cur.lin){ const l=cur.lin; return 4*l.N*l.kvh*l.hd*c/1e9; }
     if(cur&&cur.hy){ const h=cur.hy; return 4*(h.S*h.kvh*h.hd+h.F*h.gkvh*h.ghd)*c*h.share/1e9; }
@@ -475,9 +491,10 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
   function drawCurve(P,ctx){
     const svg=$('curve'), W=Math.max(260,Math.round(svg.clientWidth||340)), H=W<420?190:180, L=40, R=12, T=14, B=26;
     svg.setAttribute('viewBox','0 0 '+W+' '+H);
-    const pts=CTXS.map(c=>({c, me:kv(P,c).gb, ref:kvFull(c)}));
+    const cm=cmpModel();
+    const pts=CTXS.map(c=>({c, me:kv(P,c).gb, ref:kvFull(c), cmp:cm?kvOf(cm,c):null}));
     const hasRef=pts[0].ref!=null;
-    const ymax=Math.max(...pts.map(p=>Math.max(p.me,hasRef?p.ref:0)))||1;
+    const ymax=Math.max(...pts.map(p=>Math.max(p.me,hasRef?p.ref:0,cm?p.cmp:0)))||1;
     // 目盛りは 1・2・2.5・5 ×10^n の刻みで4分割
     const raw=ymax/4, mag=Math.pow(10,Math.floor(Math.log10(raw)));
     const tick=[1,2,2.5,5,10].map(m=>m*mag).find(v=>v>=raw);
@@ -489,18 +506,26 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
     g+='</g>';
     ['2k','8k','32k','128k'].forEach((s,i)=>{ g+='<text x="'+X(2048*Math.pow(4,i))+'" y="'+(H-6)+'" text-anchor="middle">'+s+'</text>'; });
     if(hasRef) g+='<polyline class="ref" points="'+line('ref')+'"/>';
+    if(cm) g+='<polyline class="cmp" points="'+line('cmp')+'"/>';
     g+='<polyline class="me" points="'+line('me')+'"/>';
+    if(cm) g+='<g class="dot cdot" style="transform:translate('+X(ctx)+'px,'+Y(kvOf(cm,ctx))+'px)"><circle r="4.5"/></g>';
     const now=kv(P,ctx).gb, nowRef=kvFull(ctx);
     if(hasRef) g+='<g class="dot rdot" style="transform:translate('+X(ctx)+'px,'+Y(nowRef)+'px)"><circle r="3.5"/></g>';
     g+='<g class="dot" id="cdot" style="transform:translate('+X(ctx)+'px,'+Y(now)+'px)"><circle r="5"/><text class="val" x="0" y="-9" text-anchor="'+(ctx>=131072?'end':'middle')+'">'+fmt(now,now<1?2:1)+'GB</text></g>';
     svg.innerHTML=g;
     const name=cur?cur.name:'入力したモデル';
-    $('ckey').innerHTML='<span><i></i>'+name+'</span>'+(hasRef?'<span><i class="r"></i>'+(cur.hy?'実行環境が未対応の場合':'仮に全層が記憶する作りだったら')+'</span>':'');
+    $('ckey').innerHTML='<span><i></i>'+name+'</span>'+(cm?'<span><i class="c"></i>'+cm.name+'（比較）</span>':'')+(hasRef?'<span><i class="r"></i>'+name+'：'+(cur.hy?'実行環境が未対応の場合':'仮に全層が記憶する作りだったら')+'</span>':'');
     let note;
     if(cur&&cur.hy) note=name+'は大半の層が直近の分だけ記憶する作りなので、長くしても実線はほとんど伸びません。ただし実行環境が対応していないと点線のように増え、'+ctx.toLocaleString()+'トークンで約'+fmt(nowRef)+'GBになります。';
     else if(cur&&cur.lin) note=name+'は記憶が増えるのが一部の層だけなので、全層が記憶する作り（点線）より伸びがゆるやかです。';
     else note='このモデルは全部の層が会話の長さに比例して記憶する作りです。長さを倍にすると、記憶もほぼ倍になります。';
     $('curveNote').textContent='会話の長さ'+ctx.toLocaleString()+'トークンで、会話の記憶は約'+fmt(now,2)+'GB。'+note;
+    // 比較モデルの合計と、選んだGPUでの判定（量子化は今の選択を使う）
+    if(cm){
+      const [lo,hi]=$('quant').value.split(',').map(Number);
+      const ck=kvOf(cm,ctx), cLo=cm.p*lo/8+ck+0.5, cHi=cm.p*hi/8+ck+1.0, cj=judge(gpu,cLo,cHi);
+      $('cmpRes').innerHTML='<b>'+cm.name+'</b>：会話の記憶 約'+fmt(ck,2)+'GB、必要 '+fmt(cLo)+'〜'+fmt(cHi)+'GB → '+gpu+'GBのGPUで <span class="pill '+cj.cls+'">'+cj.txt+'</span>'+(cm.hy?'<br><span class="hint">'+cm.name+'の線は実行環境が対応している場合です。</span>':'');
+    } else $('cmpRes').textContent='';
   }
 
   function drawFrame(v,wMid,kvGB,oMid,tLo,tHi){
@@ -594,6 +619,9 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
   res.addEventListener('click',e=>{ const t=e.target.closest('[data-part]'); if(!t||t.matches('input,select')) return; setHL(hlPart===t.dataset.part?null:t.dataset.part); });
   const pickGpu=(box,sel)=>box.addEventListener('click',e=>{ const b=e.target.closest(sel); if(!b) return; gpu=+b.dataset.v; calc(); const nb=box.querySelector('[data-v="'+gpu+'"]'); if(nb) nb.focus(); });
   pickGpu($('chips'),'.chip');
+  [...$('preset').querySelectorAll('optgroup')].forEach(og=>$('cmp').appendChild(og.cloneNode(true)));
+  $('cmp').querySelectorAll('option[selected]').forEach(o=>o.removeAttribute('selected'));
+  $('cmp').value='';
   pickGpu($('tiers'),'.tierBtn');
   $('scr').addEventListener('change',calc);
 
