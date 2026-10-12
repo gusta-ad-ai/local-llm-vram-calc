@@ -33,8 +33,43 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .wrap{max-width:1080px;margin:0 auto;display:grid;gap:24px}
 header h1{font-size:1.6rem;line-height:1.3;margin:0;text-wrap:balance;letter-spacing:.01em}
 header p{margin:.4rem 0 0;color:var(--muted);max-width:64ch}
-.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:24px;align-items:start}
-@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+/* 並び: DOM順は「かんたん入力 → 結果 → 詳しい設定」。PCでは左に入力2つ、右に結果。スマホでは上から順に */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-areas:"quick res" "more res";grid-template-rows:auto 1fr;gap:24px;align-items:start}
+.quick{grid-area:quick}.res{grid-area:res}.more{grid-area:more}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"quick" "res" "more";grid-template-rows:none;gap:16px}}
+.panel>*{min-width:0}
+.lbl{display:block;font-weight:500;font-size:.92rem;margin-bottom:6px}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px}
+.chip{min-height:44px;padding:6px 2px;font-size:.85rem;background:transparent;color:var(--ink);border:1px solid var(--line);font-family:var(--f-mono);font-weight:600}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+/* 判定カード */
+.verdict{display:grid;gap:8px}
+.vline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:1.15rem;font-weight:700}
+.pill.big{font-size:1.05rem;padding:4px 14px}
+.vmean{margin:0;font-size:.9rem}
+.verdict .big .n{font-size:2rem}
+/* 画面下の固定バー（スマホのみ・判定カードが見えていないとき） */
+.dock{display:none}
+@media (max-width:820px){
+  .dock{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:5;align-items:center;justify-content:space-between;gap:10px;background:var(--panel);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -4px 12px rgb(0 0 0/.08);transform:translateY(110%);transition:transform .25s ease}
+  .dock.show{transform:none}
+  .dock .dn{font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums}
+  body{padding-bottom:84px}
+  .legend{display:grid;grid-template-columns:1fr;gap:2px}
+  .legend>span{display:flex;justify-content:space-between;align-items:center;min-height:32px}
+  .fkey{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+  .formula{white-space:pre-wrap;word-break:break-all}
+}
+.fkey i{display:inline-block;width:14px;height:10px;margin-right:5px;vertical-align:-1px}
+.fkey .k-cap{border:2px solid var(--ink);border-radius:2px}
+.fkey .k-90{width:0;border-left:2px dotted var(--warn);margin-right:8px}
+.fkey .k-scr{background:repeating-linear-gradient(45deg,var(--muted) 0 2px,transparent 2px 5px)}
+.fkey .k-over{background:var(--bad-bg);border:1px dashed var(--bad)}
+.fdet,.more details{border-top:0;padding-top:0}
+.check{min-height:44px}
+.check input{width:20px;height:20px;flex:0 0 auto}
+button{min-height:44px}
+@media (hover:none){.hov{display:none}}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;display:grid;gap:16px;min-width:0}
 .panel h2{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
 label{display:block;font-weight:500;font-size:.92rem;margin-bottom:4px}
@@ -76,12 +111,18 @@ footer{font-size:.8rem;color:var(--muted)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .bar span{transition:width .35s ease}
 /* 2: 会話の長さスライダーと記憶の曲線 */
-input[type=range]{padding:6px 0;border:0;background:transparent;accent-color:var(--accent)}
+input[type=range]{--th:28px;-webkit-appearance:none;appearance:none;height:44px;padding:0;border:0;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--line)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:var(--th);height:var(--th);margin-top:-11px;border-radius:50%;background:var(--accent);border:3px solid var(--panel);box-shadow:0 1px 3px rgb(0 0 0/.3)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--accent);border:3px solid var(--panel)}
 .ctxval{font-family:var(--f-mono);font-weight:600}
-.ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:.72rem;color:var(--muted);margin-top:-2px}
-.curve svg{width:100%;height:auto;display:block;overflow:visible}
+.ticks{position:relative;height:16px;font-family:var(--f-mono);font-size:.72rem;color:var(--muted);margin-top:-6px}
+.ticks span{position:absolute;left:calc(14px + (100% - 28px) * var(--i) / 7);transform:translateX(-50%)}
+@media (max-width:460px){.ticks span:nth-child(2n){display:none}}
+.curve svg{width:100%;display:block;overflow:visible}
 .curve .grid line{stroke:var(--line)}
-.curve text{fill:var(--muted);font-family:var(--f-mono);font-size:10px}
+.curve text{fill:var(--muted);font-family:var(--f-mono);font-size:12px}
 .curve .me{fill:none;stroke:var(--ok);stroke-width:2.5;stroke-linejoin:round}
 .curve .ref{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 4}
 .curve .dot{transition:transform .3s ease}
@@ -93,7 +134,7 @@ input[type=range]{padding:6px 0;border:0;background:transparent;accent-color:var
 .ckey i.r{border-top:1.5px dashed var(--muted)}
 /* 1: GPUの枠に積み上げる */
 .frameHead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.92rem}
-.frame{position:relative;height:38px;margin:14px 0 4px}
+.frame{position:relative;height:38px;margin:26px 0 4px}
 .frame .cap{position:absolute;top:0;bottom:0;left:0;border:2px solid var(--ink);border-radius:3px;pointer-events:none;transition:width .35s ease}
 .frame .seg{position:absolute;top:5px;bottom:5px;transition:left .35s ease,width .35s ease}
 .frame .s-scr{background:repeating-linear-gradient(45deg,var(--muted) 0 2px,transparent 2px 6px);opacity:.6}
@@ -102,7 +143,7 @@ input[type=range]{padding:6px 0;border:0;background:transparent;accent-color:var
 .frame .l90{position:absolute;top:-8px;bottom:-8px;width:0;border-left:2px dotted var(--warn);transition:left .35s ease}
 .frame .tag{position:absolute;top:-20px;font-family:var(--f-mono);font-size:.7rem;color:var(--warn);transform:translateX(-50%);white-space:nowrap;transition:left .35s ease}
 .fkey{display:flex;gap:14px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:8px}
-.tierBtn{background:transparent;color:var(--ink);border:1px solid var(--line);font-family:var(--f-mono);padding:2px 10px}
+.tierBtn{background:transparent;color:var(--ink);border:1px solid var(--line);font-family:var(--f-mono);padding:6px 12px;min-width:72px}
 tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 /* 4: どこから来た数字かをたどる */
 [data-part]{cursor:help}
@@ -122,16 +163,16 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
 <div class="wrap">
   <header>
     <h1>ローカルLLM VRAM計算機</h1>
-    <p>モデルの大きさと量子化から、必要なVRAMを計算します。メモリ帯域を入れると、生成速度の<b>上限</b>も出ます。どれも<b>スペック表からの見積もり</b>で、実測ではありません。外れる条件は下にまとめています。</p>
+    <p>モデルとGPUを選ぶと、必要なVRAMと「自分のGPUで動くか」の目安を出します。どれも<b>スペック表からの見積もり</b>で、実測ではありません。外れる条件は下にまとめています。</p>
   </header>
 
-  <div class="grid">
-    <form class="panel" id="f" autocomplete="off">
-      <h2>入力</h2>
+  <div class="grid" id="app">
+    <section class="panel quick" aria-label="かんたん入力">
+      <h2>3つ選ぶだけ</h2>
       <div>
-        <label for="preset">モデルを選ぶ</label>
+        <label for="preset">① モデル</label>
         <select id="preset" data-uses="w k t">
-          <option value="">自分で入力する</option>
+          <option value="">自分で入力する（詳しい設定で）</option>
           <optgroup label="Qwen3.5〜3.8（新しい作り）">
             <option value="q384">Qwen3.5 4B</option>
             <option value="q359">Qwen3.5 9B</option>
@@ -164,85 +205,25 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
         <div class="hint" id="presetNote">値は配布元（Hugging Face）のモデルカードと config.json から取っています。</div>
       </div>
       <div>
-        <label for="name">モデル名（一覧に無いとき）</label>
-        <input id="name" value="" placeholder="例: Llama 3.1 8B">
-        <div class="hint">名前から数字を拾ってパラメータ数に入れます。<b>名前の数字は実際のパラメータ数と違うことがあります。</b>必ず下の欄を確かめてください。</div>
+        <div class="lbl" id="gpuLbl">② あなたのGPUのVRAM</div>
+        <div class="chips" id="chips" role="group" aria-labelledby="gpuLbl"></div>
       </div>
-      <p class="note" id="nameWarn" hidden></p>
-      <div class="row2">
-        <div>
-          <label for="params">パラメータ数（B＝10億）</label>
-          <input id="params" type="number" min="0.1" step="0.1" value="8" data-uses="w t">
-        </div>
-        <div>
-          <label for="quant">量子化</label>
-          <select id="quant" data-uses="w t">
-            <option value="16,16">FP16 / BF16（16bit）</option>
-            <option value="8.5,8.6">Q8_0（約8.5bit）</option>
-            <option value="6.56,6.7">Q6_K（約6.6bit）</option>
-            <option value="5.5,6.0">Q5_K_M（約5.5〜6bit）</option>
-            <option value="4.75,5.7" selected>Q4_K_M（約4.75〜5.7bit）</option>
-            <option value="4.5,4.7">Q4_0（約4.5bit）</option>
-            <option value="4.25,4.6">MXFP4（約4.3〜4.6bit・gpt-oss の配布形式）</option>
-            <option value="3.9,4.4">Q3_K_M（約4bit）</option>
-            <option value="2.6,3.4">Q2_K（約3bit）</option>
-          </select>
-        </div>
-      </div>
-      <div class="hint" style="margin-top:-8px">bit数に幅があるのは、層ごとに精度を変える方式だからです。小さいモデルほど上限側に寄ります（4Bの Q4_K_M で約5.7bit相当の実例あり）。</div>
       <div>
-        <label for="ctx">会話の長さ（コンテキスト・トークン数）: <span class="ctxval" id="ctxVal">8,192</span></label>
+        <label for="ctx">③ 会話の長さ: <span class="ctxval" id="ctxVal">8k（8,192トークン）</span></label>
         <input id="ctx" type="range" min="0" max="7" step="1" value="2" data-uses="k t" aria-describedby="ctxHint">
-        <div class="ticks" aria-hidden="true"><span>2k</span><span>4k</span><span>8k</span><span>16k</span><span>32k</span><span>64k</span><span>128k</span><span>256k</span></div>
-        <div class="hint" id="ctxHint">動かすと、右の「会話の長さと記憶」がその場で変わります。実行環境は、実際に話した長さではなく<b>設定した長さ</b>の分を最初に確保します。</div>
+        <div class="ticks" aria-hidden="true"><span style="--i:0">2k</span><span style="--i:1">4k</span><span style="--i:2">8k</span><span style="--i:3">16k</span><span style="--i:4">32k</span><span style="--i:5">64k</span><span style="--i:6">128k</span><span style="--i:7">256k</span></div>
+        <div class="hint" id="ctxHint">動かすと結果がその場で変わります。</div>
       </div>
-      <div>
-        <label class="check"><input type="checkbox" id="moe"> VRAMと速度で数字が違うモデル（MoE・Gemma の E 型）</label>
-        <div class="row2" id="moeRow" hidden style="margin-top:8px">
-          <div>
-            <label for="active">1トークンで使うパラメータ数（B）</label>
-            <input id="active" type="number" min="0.1" step="0.1" value="3">
-          </div>
-          <div class="hint" style="align-self:end">VRAMには<b>全体</b>が載る必要があります。速度に効くのは<b>使う分</b>だけです。</div>
-        </div>
-      </div>
-      <div>
-        <label for="bw">GPUのメモリ帯域（GB/s・任意）</label>
-        <input id="bw" type="number" min="1" step="1" placeholder="スペック表の「メモリ帯域」">
-        <div class="hint">入れると生成速度の上限を出します。製品ページの仕様欄にある数字です。書かれていなければ「バス幅（bit）÷ 8 × メモリ速度（Gbps）」で求められます。</div>
-      </div>
-      <details>
-        <summary>モデルの構造がわかるなら（KVキャッシュを正確に）</summary>
-        <div class="inner">
-          <div class="hint">モデルカードや <code>config.json</code> の値。空欄なら多めの目安で計算します。</div>
-          <div class="row3">
-            <div><label for="layers">層の数</label><input id="layers" type="number" min="1" placeholder="num_hidden_layers" data-uses="k t"></div>
-            <div><label for="kvh">KVヘッド数</label><input id="kvh" type="number" min="1" placeholder="num_key_value_heads" data-uses="k t"></div>
-            <div><label for="hd">ヘッドの次元</label><input id="hd" type="number" min="1" placeholder="例: 128" data-uses="k t"></div>
-          </div>
-        </div>
-      </details>
-    </form>
+    </section>
 
-    <section class="panel">
-      <h2>必要なVRAM</h2>
+    <section class="panel res" aria-label="結果">
       <p class="sr" id="live" aria-live="polite"></p>
-      <div class="big" aria-hidden="true"><span class="n" id="total" data-part="t">–</span><span class="u">GB 前後</span><span class="delta" id="delta"></span></div>
-      <div>
-        <div class="bar" aria-hidden="true"><span class="c-w" id="bw1" data-part="w"></span><span class="c-k" id="bk1" data-part="k"></span><span class="c-o" id="bo1" data-part="o"></span></div>
-        <div class="legend" style="margin-top:6px"><span data-part="w" tabindex="0"><i class="c-w"></i>モデル本体 <b id="lw">–</b></span><span data-part="k" tabindex="0"><i class="c-k"></i>会話の記憶 <b id="lk">–</b></span><span data-part="o" tabindex="0"><i class="c-o"></i>動かすための余白 <b id="lo">–</b></span></div>
-        <div class="hint">色の帯や数字にカーソルを当てると、下の計算式のどの行から来た数字か、どの入力を使ったかが光ります。</div>
-      </div>
-
-      <div class="curve">
-        <h2 style="margin-bottom:6px">会話の長さと記憶</h2>
-        <svg id="curve" viewBox="0 0 340 170" role="img" aria-labelledby="curveNote"></svg>
-        <div class="ckey" id="ckey"></div>
-        <div class="hint" id="curveNote"></div>
-      </div>
-
-      <div>
-        <div class="frameHead"><b id="fTitle">12 GB のGPUに載せると</b><span class="pill" id="fPill"></span></div>
+      <div class="verdict" id="verdict">
+        <h2>判定</h2>
+        <div class="vline"><span id="vGpu">12 GB のGPU</span><span class="pill big" id="fPill"></span></div>
+        <p class="vmean" id="vMean"></p>
+        <div class="big" aria-hidden="true"><span class="u">必要なVRAM</span><span class="n" id="total" data-part="t">–</span><span class="u">GB 前後</span><span class="delta" id="delta"></span></div>
+        <div class="hint" id="vRest"></div>
         <div class="frame" id="frame" aria-hidden="true">
           <div class="over" id="fOver"></div>
           <div class="seg s-scr" id="fScr"></div>
@@ -250,29 +231,109 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
           <div class="seg s-k c-k" id="fK" data-part="k"></div>
           <div class="seg s-o c-o" id="fO" data-part="o"></div>
           <div class="cap" id="fCap"></div>
-          <div class="l90" id="f90"></div><div class="tag" id="f90t">9割</div>
+          <div class="l90" id="f90"></div><div class="tag" id="f90t">ここまで安全</div>
         </div>
-        <div class="fkey"><span>太枠＝GPUのVRAM</span><span>点線＝ここまでなら載る見込み（9割）</span><span>斜線＝画面表示の分</span><span>赤＝溢れる分</span></div>
-        <label class="check" style="margin-top:8px"><input type="checkbox" id="scr" checked> このGPUで画面も映している（1GB引く）</label>
+        <div class="fkey"><span><i class="k-cap"></i>太枠＝VRAM</span><span><i class="k-90"></i>点線＝安全ライン（9割）</span><span><i class="k-scr"></i>斜線＝画面表示</span><span><i class="k-over"></i>赤＝溢れる分</span></div>
+        <label class="check"><input type="checkbox" id="scr" checked> このGPUで画面も映している（1GB引く）</label>
+      </div>
+
+      <div>
+        <h2 style="margin-bottom:8px">内訳</h2>
+        <div class="bar" aria-hidden="true"><span class="c-w" id="bw1" data-part="w"></span><span class="c-k" id="bk1" data-part="k"></span><span class="c-o" id="bo1" data-part="o"></span></div>
+        <div class="legend"><span data-part="w" tabindex="0"><span><i class="c-w"></i>モデル本体</span><b id="lw">–</b></span><span data-part="k" tabindex="0"><span><i class="c-k"></i>会話の記憶</span><b id="lk">–</b></span><span data-part="o" tabindex="0"><span><i class="c-o"></i>動かすための余白</span><b id="lo">–</b></span></div>
+        <div class="hint hov">色の帯や項目にカーソルを当てる（スマホはタップ）と、計算式のどの行から来た数字か、どの入力を使ったかが光ります。</div>
+      </div>
+
+      <div class="curve">
+        <h2 style="margin-bottom:6px">会話の長さと記憶（GB）</h2>
+        <svg id="curve" role="img" aria-labelledby="curveNote"></svg>
+        <div class="ckey" id="ckey"></div>
+        <div class="hint" id="curveNote"></div>
+        <div class="hint">実行環境は、実際に話した長さではなく<b>設定した長さ</b>の分を最初に確保します。</div>
       </div>
 
       <div class="tbl">
+        <h2 style="margin-bottom:6px">GPUの大きさ別（タップで切替）</h2>
         <table>
-          <thead><tr><th>GPUのVRAM（押すと上の枠が切り替わる）</th><th>判定</th><th style="text-align:right">残り</th></tr></thead>
+          <thead><tr><th>VRAM</th><th>判定</th><th style="text-align:right">残り</th></tr></thead>
           <tbody id="tiers"></tbody>
         </table>
       </div>
 
       <div class="speed" id="speedBox">
         <h2 style="margin-bottom:6px">生成速度の上限</h2>
-        <div class="big"><span class="n" id="spd">–</span><span class="u" id="spdU">帯域を入れると出ます</span></div>
+        <div class="big"><span class="n" id="spd">–</span><span class="u" id="spdU">「詳しい設定」で帯域を入れると出ます</span></div>
         <div class="hint" id="spdNote"></div>
       </div>
 
-      <div class="formula" id="formula"></div>
-      <div><button type="button" id="copy">計算結果をコピー</button> <span class="hint" id="copied"></span></div>
+      <details class="fdet" id="fdet">
+        <summary>計算式を見る</summary>
+        <div class="formula" id="formula"></div>
+        <div style="margin-top:10px"><button type="button" id="copy">計算結果をコピー</button> <span class="hint" id="copied"></span></div>
+      </details>
+    </section>
+
+    <section class="panel more">
+      <details id="more">
+        <summary>詳しい設定（量子化・パラメータ数・速度など）</summary>
+        <div class="inner">
+          <div>
+            <label for="quant">量子化</label>
+            <select id="quant" data-uses="w t">
+              <option value="16,16">FP16 / BF16（16bit）</option>
+              <option value="8.5,8.6">Q8_0（約8.5bit）</option>
+              <option value="6.56,6.7">Q6_K（約6.6bit）</option>
+              <option value="5.5,6.0">Q5_K_M（約5.5〜6bit）</option>
+              <option value="4.75,5.7" selected>Q4_K_M（約4.75〜5.7bit）</option>
+              <option value="4.5,4.7">Q4_0（約4.5bit）</option>
+              <option value="4.25,4.6">MXFP4（約4.3〜4.6bit・gpt-oss の配布形式）</option>
+              <option value="3.9,4.4">Q3_K_M（約4bit）</option>
+              <option value="2.6,3.4">Q2_K（約3bit）</option>
+            </select>
+            <div class="hint">bit数に幅があるのは、層ごとに精度を変える方式だからです。小さいモデルほど上限側に寄ります（4Bの Q4_K_M で約5.7bit相当の実例あり）。</div>
+          </div>
+          <div>
+            <label for="name">モデル名（一覧に無いとき）</label>
+            <input id="name" value="" placeholder="例: Llama 3.1 8B">
+            <div class="hint">名前から数字を拾ってパラメータ数に入れます。<b>名前の数字は実際のパラメータ数と違うことがあります。</b>必ず下の欄を確かめてください。</div>
+          </div>
+          <p class="note" id="nameWarn" hidden></p>
+          <div>
+            <label for="params">パラメータ数（B＝10億）</label>
+            <input id="params" type="number" min="0.1" step="0.1" value="8" data-uses="w t">
+          </div>
+          <div>
+            <label class="check"><input type="checkbox" id="moe"> VRAMと速度で数字が違うモデル（MoE・Gemma の E 型）</label>
+            <div class="row2" id="moeRow" hidden style="margin-top:8px">
+              <div>
+                <label for="active">1トークンで使うパラメータ数（B）</label>
+                <input id="active" type="number" min="0.1" step="0.1" value="3">
+              </div>
+              <div class="hint" style="align-self:end">VRAMには<b>全体</b>が載る必要があります。速度に効くのは<b>使う分</b>だけです。</div>
+            </div>
+          </div>
+          <div>
+            <label for="bw">GPUのメモリ帯域（GB/s・任意）</label>
+            <input id="bw" type="number" min="1" step="1" placeholder="スペック表の「メモリ帯域」">
+            <div class="hint">入れると生成速度の上限を出します。製品ページの仕様欄にある数字です。書かれていなければ「バス幅（bit）÷ 8 × メモリ速度（Gbps）」で求められます。</div>
+          </div>
+          <details>
+            <summary>モデルの構造がわかるなら（KVキャッシュを正確に）</summary>
+            <div class="inner">
+              <div class="hint">モデルカードや <code>config.json</code> の値。空欄なら多めの目安で計算します。</div>
+              <div class="row3">
+                <div><label for="layers">層の数</label><input id="layers" type="number" min="1" placeholder="num_hidden_layers" data-uses="k t"></div>
+                <div><label for="kvh">KVヘッド数</label><input id="kvh" type="number" min="1" placeholder="num_key_value_heads" data-uses="k t"></div>
+                <div><label for="hd">ヘッドの次元</label><input id="hd" type="number" min="1" placeholder="例: 128" data-uses="k t"></div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </details>
     </section>
   </div>
+
+  <div class="dock" id="dock" aria-hidden="true"><span class="dn" id="dNeed">–</span><span class="pill" id="dPill"></span></div>
 
   <section class="panel">
     <h2>この見積もりが外れる条件</h2>
@@ -324,7 +385,7 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
   function applyPreset(){
     const k=$('preset').value; cur=PRESETS[k]||null;
     const note=$('presetNote');
-    if(!cur){ note.textContent='下の欄に自分で入力してください。'; calc(); return; }
+    if(!cur){ note.textContent='「詳しい設定」で入力してください。'; calc(); return; }
     $('name').value=''; $('nameWarn').hidden=true;
     $('params').value=cur.p;
     $('moe').checked=!!cur.act; if(cur.act) $('active').value=cur.act;
@@ -343,7 +404,7 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
 
   function parseName(){
     const s=$('name').value; const warn=$('nameWarn'); const msgs=[];
-    if(s){ $('preset').value=''; cur=null; $('presetNote').textContent='下の欄に自分で入力してください。'; }
+    if(s){ $('preset').value=''; cur=null; $('presetNote').textContent='「詳しい設定」で入力してください。'; }
     const moe=s.match(/(\d+(?:\.\d+)?)\s*[bB]\s*[-_ ]?\s*[aA](\d+(?:\.\d+)?)\s*[bB]/);
     if(moe){
       $('params').value=moe[1]; $('moe').checked=true; $('active').value=moe[2];
@@ -395,6 +456,13 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
     return {cls:'p-bad',txt:'溢れる'};
   }
 
+  // 判定の言い換え（しきい値は judge() のまま）
+  const MEAN={
+    'p-ok':'この設定なら、VRAMに収まる見込みです。',
+    'p-warn':'動くこともありますが、溢れると急に遅くなります。会話の長さを短くするか、量子化を小さくすると余裕が出ます。',
+    'p-bad':'VRAMに入りきりません。動いても、溢れた分はメインメモリで処理されるので大幅に遅くなります。'};
+  const CTXL=['2k','4k','8k','16k','32k','64k','128k','256k'];
+
   // 4: 数字を古い値から新しい値へ動かす
   function tween(el,from,to,render){
     if(reduced()||from==null||!Number.isFinite(from)){ el.textContent=render(to); return; }
@@ -405,19 +473,21 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
   }
 
   function drawCurve(P,ctx){
-    const svg=$('curve'), W=340, H=170, L=36, R=10, T=14, B=24;
+    const svg=$('curve'), W=Math.max(260,Math.round(svg.clientWidth||340)), H=W<420?190:180, L=40, R=12, T=14, B=26;
+    svg.setAttribute('viewBox','0 0 '+W+' '+H);
     const pts=CTXS.map(c=>({c, me:kv(P,c).gb, ref:kvFull(c)}));
     const hasRef=pts[0].ref!=null;
     const ymax=Math.max(...pts.map(p=>Math.max(p.me,hasRef?p.ref:0)))||1;
-    const step=Math.pow(10,Math.floor(Math.log10(ymax)));
-    const top=Math.ceil(ymax/step)*step;
+    // 目盛りは 1・2・2.5・5 ×10^n の刻みで4分割
+    const raw=ymax/4, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+    const tick=[1,2,2.5,5,10].map(m=>m*mag).find(v=>v>=raw);
+    const top=tick*4;
     const X=c=>L+(Math.log2(c/2048)/7)*(W-L-R), Y=g=>T+(1-g/top)*(H-T-B);
     const line=k=>pts.map(p=>X(p.c).toFixed(1)+','+Y(p[k]).toFixed(1)).join(' ');
     let g='<g class="grid">';
-    for(let i=0;i<=4;i++){ const v=top*i/4; g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/><text x="'+(L-4)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+(v<1?v.toFixed(1):Math.round(v))+'</text>'; }
+    for(let i=0;i<=4;i++){ const v=top*i/4; g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/><text x="'+(L-4)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+(Number.isInteger(+v.toFixed(2))?Math.round(v):+v.toFixed(2))+'</text>'; }
     g+='</g>';
     ['2k','8k','32k','128k'].forEach((s,i)=>{ g+='<text x="'+X(2048*Math.pow(4,i))+'" y="'+(H-6)+'" text-anchor="middle">'+s+'</text>'; });
-    g+='<text x="'+(L-4)+'" y="8" text-anchor="end">GB</text>';
     if(hasRef) g+='<polyline class="ref" points="'+line('ref')+'"/>';
     g+='<polyline class="me" points="'+line('me')+'"/>';
     const now=kv(P,ctx).gb, nowRef=kvFull(ctx);
@@ -442,8 +512,9 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
     const line=scr+(v-scr)*0.9; $('f90').style.left=pc(line); $('f90t').style.left=pc(line);
     const ov=$('fOver'); if(need>v){ ov.style.left=pc(v); ov.style.width=pc(need-v); ov.hidden=false; } else { ov.style.width='0'; ov.hidden=true; }
     const j=judge(v,tLo,tHi);
-    $('fTitle').textContent=v+' GB のGPUに載せると';
-    const pill=$('fPill'); pill.className='pill '+j.cls; pill.textContent=j.txt;
+    $('vGpu').textContent=v+' GB のGPU';
+    const pill=$('fPill'); pill.className='pill big '+j.cls; pill.textContent=j.txt;
+    $('vMean').textContent=MEAN[j.cls];
     $('fW').setAttribute('aria-label','モデル本体 約'+fmt(wMid)+'GB'); $('fK').setAttribute('aria-label','会話の記憶 約'+fmt(kvGB,2)+'GB'); $('fO').setAttribute('aria-label','余白 約0.75GB');
     return j;
   }
@@ -453,7 +524,7 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
     const P=Math.max(0,+$('params').value||0);
     const [lo,hi]=$('quant').value.split(',').map(Number);
     const ctx=getCtx();
-    $('ctxVal').textContent=ctx.toLocaleString(); $('ctx').setAttribute('aria-valuetext',ctx.toLocaleString()+'トークン');
+    $('ctxVal').textContent=CTXL[+$('ctx').value]+'（'+ctx.toLocaleString()+'トークン）'; $('ctx').setAttribute('aria-valuetext',ctx.toLocaleString()+'トークン');
     const wLo=P*lo/8, wHi=P*hi/8;
     const k=kv(P,ctx); const kvGB=k.gb;
     const oLo=0.5, oHi=1.0;
@@ -479,6 +550,11 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
       const t=judge(v,tLo,tHi), rest=v-scr-mid;
       return '<tr'+(v===gpu?' class="sel"':'')+'><td><button type="button" class="tierBtn" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+' GB</button></td><td><span class="pill '+t.cls+'">'+t.txt+'</span></td><td class="num">'+(rest>=0?'+':'')+fmt(rest)+' GB</td></tr>';
     }).join('');
+    $('chips').innerHTML=TIERS.map(v=>'<button type="button" class="chip" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+'GB</button>').join('');
+    const rest=gpu-scr-mid;
+    $('vRest').textContent='このGPUで使えるのは約'+fmt(gpu-scr)+'GB（画面表示の分を引いた値）。残りは約'+(rest>=0?'+':'')+fmt(rest)+'GB。';
+    $('dNeed').textContent='必要 '+fmt(tLo)+'〜'+fmt(tHi)+'GB ／ '+gpu+'GB';
+    const dp=$('dPill'); dp.className='pill '+j.cls; dp.textContent=j.txt;
     $('live').textContent='必要なVRAM 約'+fmt(tLo)+'〜'+fmt(tHi)+'GB。会話の記憶 約'+fmt(kvGB,2)+'GB。'+gpu+'GBのGPUでは「'+j.txt+'」。';
 
     const bw=+$('bw').value; const split=$('moe').checked;
@@ -488,7 +564,7 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
     if(bw>0&&readGB>0){
       $('spd').textContent=fixed?(fmt(bw/cur.readGB[1],0)+'〜'+fmt(bw/cur.readGB[0],0)):fmt(bw/readGB,0); $('spdU').textContent='トークン/秒 が上限';
       $('spdNote').textContent='帯域 '+bw+' GB/s ÷ 1トークンごとに読む大きさ 約'+fmt(readGB,2)+' GB。'+(fixed?'使う分のうち注意の層・出力の層は高い精度のまま配布されているため、読む大きさを約'+cur.readGB[0]+'〜'+cur.readGB[1]+'GBで計算。':(split?'使う分（'+actP+'B）で計算。':''))+' 実際はこれより遅くなります。長い会話では会話の記憶も毎回読むので、さらに下がります。';
-    }else{ $('spd').textContent='–'; $('spdU').textContent='帯域を入れると出ます'; $('spdNote').textContent=''; }
+    }else{ $('spd').textContent='–'; $('spdU').textContent='「詳しい設定」で帯域を入れると出ます'; $('spdNote').textContent=''; }
 
     const lines=[
       ['w','モデル本体 = '+P+'B × '+lo+'〜'+hi+'bit ÷ 8 = '+fmt(wLo)+'〜'+fmt(wHi)+' GB'],
@@ -514,14 +590,22 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
   const res=document.querySelector('.grid');
   ['mouseover','focusin'].forEach(ev=>res.addEventListener(ev,e=>{ const t=e.target.closest('[data-part]'); if(t&&!t.matches('input,select')) setHL(t.dataset.part); }));
   ['mouseout','focusout'].forEach(ev=>res.addEventListener(ev,e=>{ const t=e.target.closest('[data-part]'); if(t&&!(e.relatedTarget&&t.contains(e.relatedTarget))) setHL(null); }));
-  $('tiers').addEventListener('click',e=>{ const b=e.target.closest('.tierBtn'); if(!b) return; gpu=+b.dataset.v; calc(); const nb=$('tiers').querySelector('[data-v="'+gpu+'"]'); if(nb) nb.focus(); });
+  // タッチ: タップで光らせる。同じ部分をもう一度タップで消す
+  res.addEventListener('click',e=>{ const t=e.target.closest('[data-part]'); if(!t||t.matches('input,select')) return; setHL(hlPart===t.dataset.part?null:t.dataset.part); });
+  const pickGpu=(box,sel)=>box.addEventListener('click',e=>{ const b=e.target.closest(sel); if(!b) return; gpu=+b.dataset.v; calc(); const nb=box.querySelector('[data-v="'+gpu+'"]'); if(nb) nb.focus(); });
+  pickGpu($('chips'),'.chip');
+  pickGpu($('tiers'),'.tierBtn');
   $('scr').addEventListener('change',calc);
 
   $('preset').addEventListener('change',applyPreset);
   $('name').addEventListener('input',()=>{parseName();calc();});
-  ['layers','kvh','hd'].forEach(id=>$(id).addEventListener('input',()=>{ if(cur&&(cur.hy||cur.lin)){cur=null;$('preset').value='';$('presetNote').textContent='下の欄に自分で入力してください。';} }));
-  $('f').addEventListener('input',e=>{ if(e.target.id!=='name'&&e.target.id!=='preset') calc(); });
-  $('f').addEventListener('submit',e=>e.preventDefault());
+  ['layers','kvh','hd'].forEach(id=>$(id).addEventListener('input',()=>{ if(cur&&(cur.hy||cur.lin)){cur=null;$('preset').value='';$('presetNote').textContent='「詳しい設定」で入力してください。';} }));
+  $('app').addEventListener('input',e=>{ if(e.target.matches('input,select')&&e.target.id!=='name'&&e.target.id!=='preset') calc(); });
+  // 画面下の固定バー: 判定カードが見えていないときだけ出す（スマホのみ表示、CSS側で制御）
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(es=>es.forEach(en=>$('dock').classList.toggle('show',!en.isIntersecting)),{threshold:0}).observe($('verdict'));
+  }
+  let rz=0; addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>drawCurve(Math.max(0,+$('params').value||0),getCtx()),150); });
   $('copy').addEventListener('click',()=>{
     const label=cur?cur.name:($('name').value||'');
     const t=(label?label+'\n':'')+$('formula').dataset.text;
