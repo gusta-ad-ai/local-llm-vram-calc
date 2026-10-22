@@ -7,7 +7,7 @@
 <title>ローカルLLM VRAM計算機</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@1,500;1,600;1,700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500;700&display=swap">
 <style>
 /* Layout: a datasheet. Inputs on the left as a spec form, the answer on the right as a readout; stacks to one column on phones. */
 :root{
@@ -121,13 +121,27 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .ticks span{position:absolute;left:calc(14px + (100% - 28px) * var(--i) / 7);transform:translateX(-50%)}
 @media (max-width:460px){.ticks span:nth-child(2n){display:none}}
 .curve svg{width:100%;display:block;overflow:visible}
-.curve .grid line{stroke:var(--line)}
+.curve .grid line{stroke:var(--line);stroke-opacity:.6}
+.plot{position:relative;touch-action:pan-y}
+.curve .cursor{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
+.curve .hdot circle{stroke:var(--panel);stroke-width:2}
+/* ツールチップ（shadcn/ui の chart tooltip の見た目を参考） */
+.tip{position:absolute;z-index:6;min-width:8rem;display:grid;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:.75rem;line-height:1.4;white-space:nowrap;pointer-events:none;box-shadow:0 10px 25px -5px rgb(0 0 0/.18),0 8px 10px -6px rgb(0 0 0/.12)}
+.tip[hidden]{display:none!important}
+.tip .tl{font-weight:600}
+.tip .tr{display:flex;align-items:stretch;gap:8px}
+.tip .ind{flex:0 0 auto;border-radius:2px}
+.tip .ind.dot{width:10px;height:10px;align-self:center}
+.tip .ind.line{width:4px}
+.tip .ind.dash{width:0;border:1.5px dashed var(--muted);background:transparent!important}
+.tip .nm{color:var(--muted)}
+.tip .vl{margin-left:auto;padding-left:12px;font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums}
 .curve text{fill:var(--muted);font-family:var(--f-mono);font-size:12px}
 .curve .me{fill:none;stroke:var(--ok);stroke-width:2.5;stroke-linejoin:round}
 .curve .ref{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 4}
 .curve .cmp{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round}
 .curve .cdot circle{fill:var(--accent);stroke:var(--panel);stroke-width:2}
-.ckey i.c{border-top-color:var(--accent)}
+.ckey i.c{background:var(--accent)}
 .cmpBox{display:grid;gap:6px;margin-bottom:8px}
 .cmpRes{font-size:.88rem;padding:8px 10px;border-radius:4px;background:var(--bg)}
 .cmpRes:empty{display:none}
@@ -135,9 +149,10 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .curve .dot circle{fill:var(--ok);stroke:var(--panel);stroke-width:2}
 .curve .rdot circle{fill:var(--muted)}
 .curve .val{fill:var(--ink);font-weight:600}
-.ckey{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
-.ckey i{display:inline-block;width:16px;height:0;border-top:2.5px solid var(--ok);margin-right:5px;vertical-align:3px}
-.ckey i.r{border-top:1.5px dashed var(--muted)}
+.ckey{display:flex;justify-content:center;gap:6px 16px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);padding-top:8px}
+.ckey>span{display:flex;align-items:center;gap:6px}
+.ckey i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--ok);flex:0 0 auto}
+.ckey i.r{background:transparent;border:1.5px dashed var(--muted);width:9px;height:9px}
 /* 1: GPUの枠に積み上げる */
 .frameHead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.92rem}
 .frame{position:relative;height:38px;margin:26px 0 4px}
@@ -160,6 +175,34 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
 .delta{font-family:var(--f-mono);font-size:.85rem;font-weight:600;padding:1px 9px;border-radius:999px;opacity:0;transition:opacity .3s}
 .delta.show{opacity:1}
 .delta.up{background:var(--warn-bg);color:var(--warn)}.delta.down{background:var(--ok-bg);color:var(--ok)}
+
+/* メーター風（NSX-R 02R メーターを参考）: 数字は Chakra Petch 斜体、判定カードはカーボン柄の文字盤＋赤リング、針は黄色 */
+:root{--f-num:"Chakra Petch",var(--f-mono);--meter:#d9480f;--needle:#f2c200;--ring:#c8232c;--face:#2b3139}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--meter:#ff6a3d}}
+:root[data-theme="dark"]{--meter:#ff6a3d}
+.big .n,td.num,.tierBtn,.chip,.tip .vl,.ctxval,.ticks,.dock .dn,.legend b,.curve text{font-family:var(--f-num);font-style:italic;font-weight:600;letter-spacing:.01em}
+.curve text{font-weight:500}
+.legend b{margin-left:4px}
+.big .n{color:var(--meter)}
+td.num{color:var(--meter);font-size:.95rem}
+td.num.neg{color:var(--bad)}
+/* 判定カード＝文字盤。中だけ常にダーク配色 */
+.verdict{--ink:#eef1f4;--muted:#aab3bd;--line:#4b535e;--bg:#22272e;--panel:#2b3139;--accent:#7aa2ff;--accent-ink:#0d1220;--ok:#6fd3a0;--ok-bg:#16302a;--warn:#f0c065;--warn-bg:#352a14;--bad:#ff8a80;--bad-bg:#3a1c1b;--meter:#ff6a3d;
+  color:var(--ink);padding:16px 16px 14px;border-radius:12px;
+  background-color:var(--face);
+  background-image:linear-gradient(45deg,rgb(255 255 255/.035) 25%,transparent 25%,transparent 75%,rgb(255 255 255/.035) 75%),linear-gradient(45deg,rgb(255 255 255/.035) 25%,transparent 25%,transparent 75%,rgb(255 255 255/.035) 75%),radial-gradient(120% 90% at 50% 0%,rgb(255 255 255/.07),transparent 60%);
+  background-size:6px 6px,6px 6px,100% 100%;background-position:0 0,3px 3px,0 0;
+  box-shadow:inset 0 0 0 2px var(--ring),inset 0 0 0 5px rgb(0 0 0/.35),0 2px 10px rgb(0 0 0/.18)}
+.verdict h2{color:var(--muted)}
+.verdict .hint{color:var(--muted)}
+/* レッドゾーン（安全ライン〜VRAMの上限） */
+.frame .redz{position:absolute;top:-7px;height:3px;background:var(--ring);border-radius:2px;transition:left .35s ease,width .35s ease}
+/* 針の色: スライダーのつまみ、グラフの縦線 */
+input[type=range]::-webkit-slider-thumb{background:var(--needle);border-color:#1d2329}
+input[type=range]::-moz-range-thumb{background:var(--needle);border-color:#1d2329}
+.curve .cursor{stroke:var(--needle);stroke-dasharray:none;stroke-width:1.5}
+/* 選んだGPU＝走行距離計（黒地に白の数字・赤枠） */
+.chip[aria-pressed="true"],tr.sel .tierBtn{background:#0e1013;color:#f4f4f4;border-color:var(--ring);box-shadow:inset 0 0 0 1px var(--ring)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -237,7 +280,8 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
           <div class="seg s-k c-k" id="fK" data-part="k"></div>
           <div class="seg s-o c-o" id="fO" data-part="o"></div>
           <div class="cap" id="fCap"></div>
-          <div class="l90" id="f90"></div><div class="tag" id="f90t">ここまで安全</div>
+          <div class="redz" id="fRed"></div><div class="l90" id="f90"></div><div class="tag" id="f90t">ここまで安全</div>
+          <div class="tip" id="ftip" hidden></div>
         </div>
         <div class="fkey"><span><i class="k-cap"></i>太枠＝VRAM</span><span><i class="k-90"></i>点線＝安全ライン（9割）</span><span><i class="k-scr"></i>斜線＝画面表示</span><span><i class="k-over"></i>赤＝溢れる分</span></div>
         <label class="check"><input type="checkbox" id="scr" checked> このGPUで画面も映している（1GB引く）</label>
@@ -253,7 +297,7 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
       <div class="curve">
         <h2 style="margin-bottom:6px">会話の長さと記憶（GB）</h2>
         <div class="cmpBox"><label for="cmp" style="margin:0">比べるモデル（同じグラフに重ねる）</label><select id="cmp"><option value="">比べない</option></select></div>
-        <svg id="curve" role="img" aria-labelledby="curveNote"></svg>
+        <div class="plot" id="plot"><svg id="curve" role="img" aria-labelledby="curveNote" tabindex="0"></svg><div class="tip" id="ctip" hidden></div></div>
         <div class="ckey" id="ckey"></div>
         <div class="hint" id="curveNote"></div>
         <div class="cmpRes" id="cmpRes" aria-live="polite"></div>
@@ -502,7 +546,7 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
     const X=c=>L+(Math.log2(c/2048)/7)*(W-L-R), Y=g=>T+(1-g/top)*(H-T-B);
     const line=k=>pts.map(p=>X(p.c).toFixed(1)+','+Y(p[k]).toFixed(1)).join(' ');
     let g='<g class="grid">';
-    for(let i=0;i<=4;i++){ const v=top*i/4; g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/><text x="'+(L-4)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+(Number.isInteger(+v.toFixed(2))?Math.round(v):+v.toFixed(2))+'</text>'; }
+    for(let i=0;i<=4;i++){ const v=top*i/4; g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/><text x="'+(L-8)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+(Number.isInteger(+v.toFixed(2))?Math.round(v):+v.toFixed(2))+'</text>'; }
     g+='</g>';
     ['2k','8k','32k','128k'].forEach((s,i)=>{ g+='<text x="'+X(2048*Math.pow(4,i))+'" y="'+(H-6)+'" text-anchor="middle">'+s+'</text>'; });
     if(hasRef) g+='<polyline class="ref" points="'+line('ref')+'"/>';
@@ -512,8 +556,11 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
     const now=kv(P,ctx).gb, nowRef=kvFull(ctx);
     if(hasRef) g+='<g class="dot rdot" style="transform:translate('+X(ctx)+'px,'+Y(nowRef)+'px)"><circle r="3.5"/></g>';
     g+='<g class="dot" id="cdot" style="transform:translate('+X(ctx)+'px,'+Y(now)+'px)"><circle r="5"/><text class="val" x="0" y="-9" text-anchor="'+(ctx>=131072?'end':'middle')+'">'+fmt(now,now<1?2:1)+'GB</text></g>';
+    g+='<g id="hover" style="display:none"><line class="cursor" id="hcur" y1="'+T+'" y2="'+(H-B)+'"/></g>';
     svg.innerHTML=g;
     const name=cur?cur.name:'入力したモデル';
+    CV={pts,X,Y,W,H,T,B,cm,name,hasRef,refLabel:hasRef?(cur.hy?'実行環境が未対応の場合':'全層が記憶する作りなら'):''};
+    if(tipIdx!=null) showCurveTip(tipIdx);
     $('ckey').innerHTML='<span><i></i>'+name+'</span>'+(cm?'<span><i class="c"></i>'+cm.name+'（比較）</span>':'')+(hasRef?'<span><i class="r"></i>'+name+'：'+(cur.hy?'実行環境が未対応の場合':'仮に全層が記憶する作りだったら')+'</span>':'');
     let note;
     if(cur&&cur.hy) note=name+'は大半の層が直近の分だけ記憶する作りなので、長くしても実線はほとんど伸びません。ただし実行環境が対応していないと点線のように増え、'+ctx.toLocaleString()+'トークンで約'+fmt(nowRef)+'GBになります。';
@@ -528,14 +575,57 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
     } else $('cmpRes').textContent='';
   }
 
+  // 1: グラフのツールチップ。なぞった位置にいちばん近い長さに吸着し、縦線と各線の値を出す
+  let CV=null, tipIdx=null;
+  const gb=v=>fmt(v,v<1?2:1)+'GB';
+  function rowsHTML(label,rows){
+    return '<div class="tl">'+label+'</div>'+rows.map(r=>'<div class="tr"><i class="ind '+r.ind+'" style="background:'+r.color+'"></i><span class="nm">'+r.name+'</span><span class="vl">'+r.val+'</span></div>').join('');
+  }
+  function placeTip(tip,box,x,y,above){
+    tip.hidden=false;
+    const bw=box.clientWidth, tw=tip.offsetWidth, th=tip.offsetHeight;
+    let left=x+12; if(left+tw>bw) left=x-12-tw; if(left<0) left=Math.max(0,Math.min(bw-tw,x-tw/2));
+    tip.style.left=left+'px'; tip.style.top=(above?y-th-10:y)+'px';
+  }
+  function showCurveTip(i){
+    if(!CV) return; tipIdx=i;
+    const p=CV.pts[i], svg=$('curve'), k=svg.clientWidth/CV.W;
+    const hv=$('hover'); hv.style.display='';
+    const x=CV.X(p.c); $('hcur').setAttribute('x1',x); $('hcur').setAttribute('x2',x);
+    hv.querySelectorAll('.hdot').forEach(e=>e.remove());
+    const rows=[{name:CV.name,val:gb(p.me),ind:'line',color:'var(--ok)',y:p.me}];
+    if(CV.cm) rows.push({name:CV.cm.name+'（比較）',val:gb(p.cmp),ind:'line',color:'var(--accent)',y:p.cmp});
+    if(CV.hasRef) rows.push({name:CV.refLabel,val:gb(p.ref),ind:'dash',color:'transparent',y:p.ref});
+    rows.forEach(r=>{ const c=document.createElementNS('http://www.w3.org/2000/svg','g'); c.setAttribute('class','hdot'); c.innerHTML='<circle cx="'+x+'" cy="'+CV.Y(r.y)+'" r="4" fill="'+(r.ind==='dash'?'var(--muted)':r.color)+'"/>'; hv.appendChild(c); });
+    const tip=$('ctip'); tip.innerHTML=rowsHTML(CTXL[i]+'（'+p.c.toLocaleString()+'トークン）',rows);
+    placeTip(tip,$('plot'),x*k,CV.T*k,false);
+  }
+  function hideCurveTip(){ tipIdx=null; $('ctip').hidden=true; const hv=$('hover'); if(hv) hv.style.display='none'; }
+  function idxAt(e){
+    const svg=$('curve'), r=svg.getBoundingClientRect(), x=(e.clientX-r.left)/r.width*CV.W;
+    let best=0,d=1e9; CV.pts.forEach((p,i)=>{ const dd=Math.abs(CV.X(p.c)-x); if(dd<d){d=dd;best=i;} }); return best;
+  }
+
+  // 4: GPUの枠の帯にも同じツールチップ
+  let FV=null, FW=[0,0];
+  function showFrameTip(e,part){
+    if(!FV) return;
+    const M={scr:{name:'画面表示',val:'1.0GB',color:'var(--muted)'},w:{name:'モデル本体',val:fmt(FV.wLo)+'〜'+fmt(FV.wHi)+'GB',color:'var(--accent)'},k:{name:'会話の記憶',val:gb(FV.kv),color:'var(--ok)'},o:{name:'動かすための余白',val:'0.5〜1.0GB',color:'var(--muted)'},over:{name:'溢れる分（目安）',val:'約'+fmt(FV.over)+'GB',color:'var(--bad)'}};
+    const r=M[part]; if(!r) return;
+    const fr=$('frame'), b=fr.getBoundingClientRect();
+    const tip=$('ftip'); tip.innerHTML=rowsHTML(FV.v+' GB のGPU',[Object.assign({ind:'dot'},r)]);
+    placeTip(tip,fr,e.clientX-b.left,0,true);
+  }
+
   function drawFrame(v,wMid,kvGB,oMid,tLo,tHi){
     const scr=$('scr').checked?1:0, need=scr+wMid+kvGB+oMid;
     const S=Math.max(v,need)*1.06, pc=x=>(x/S*100)+'%';
     let x=0; const put=(id,w)=>{ const e=$(id); e.style.left=pc(x); e.style.width=pc(w); x+=w; };
     put('fScr',scr); put('fW',wMid); put('fK',kvGB); put('fO',oMid);
     $('fCap').style.width=pc(v);
-    const line=scr+(v-scr)*0.9; $('f90').style.left=pc(line); $('f90t').style.left=pc(line);
+    const line=scr+(v-scr)*0.9; $('f90').style.left=pc(line); $('f90t').style.left=pc(line); $('fRed').style.left=pc(line); $('fRed').style.width=pc(v-line);
     const ov=$('fOver'); if(need>v){ ov.style.left=pc(v); ov.style.width=pc(need-v); ov.hidden=false; } else { ov.style.width='0'; ov.hidden=true; }
+    FV={v,wLo:FW[0],wHi:FW[1],kv:kvGB,over:Math.max(0,need-v)};
     const j=judge(v,tLo,tHi);
     $('vGpu').textContent=v+' GB のGPU';
     const pill=$('fPill'); pill.className='pill big '+j.cls; pill.textContent=j.txt;
@@ -569,11 +659,12 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
     $('bw1').style.width=(wMid/sum*100)+'%'; $('bk1').style.width=(kvGB/sum*100)+'%'; $('bo1').style.width=(oMid/sum*100)+'%';
 
     drawCurve(P,ctx);
+    FW=[wLo,wHi];
     const j=drawFrame(gpu,wMid,kvGB,oMid,tLo,tHi);
     const scr=$('scr').checked?1:0;
     $('tiers').innerHTML=TIERS.map(v=>{
       const t=judge(v,tLo,tHi), rest=v-scr-mid;
-      return '<tr'+(v===gpu?' class="sel"':'')+'><td><button type="button" class="tierBtn" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+' GB</button></td><td><span class="pill '+t.cls+'">'+t.txt+'</span></td><td class="num">'+(rest>=0?'+':'')+fmt(rest)+' GB</td></tr>';
+      return '<tr'+(v===gpu?' class="sel"':'')+'><td><button type="button" class="tierBtn" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+' GB</button></td><td><span class="pill '+t.cls+'">'+t.txt+'</span></td><td class="num'+(rest<0?' neg':'')+'">'+(rest>=0?'+':'')+fmt(rest)+' GB</td></tr>';
     }).join('');
     $('chips').innerHTML=TIERS.map(v=>'<button type="button" class="chip" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+'GB</button>').join('');
     const rest=gpu-scr-mid;
@@ -619,6 +710,17 @@ tr.sel .tierBtn{background:var(--accent);color:var(--accent-ink);border-color:va
   res.addEventListener('click',e=>{ const t=e.target.closest('[data-part]'); if(!t||t.matches('input,select')) return; setHL(hlPart===t.dataset.part?null:t.dataset.part); });
   const pickGpu=(box,sel)=>box.addEventListener('click',e=>{ const b=e.target.closest(sel); if(!b) return; gpu=+b.dataset.v; calc(); const nb=box.querySelector('[data-v="'+gpu+'"]'); if(nb) nb.focus(); });
   pickGpu($('chips'),'.chip');
+  const svgEl=$('curve');
+  svgEl.addEventListener('pointermove',e=>{ if(CV) showCurveTip(idxAt(e)); });
+  svgEl.addEventListener('pointerdown',e=>{ if(CV) showCurveTip(idxAt(e)); });
+  svgEl.addEventListener('pointerleave',e=>{ if(e.pointerType==='mouse') hideCurveTip(); });
+  svgEl.addEventListener('focus',()=>showCurveTip(+$('ctx').value));
+  svgEl.addEventListener('blur',hideCurveTip);
+  svgEl.addEventListener('keydown',e=>{ if(tipIdx==null) return; if(e.key==='ArrowRight'){showCurveTip(Math.min(7,tipIdx+1));e.preventDefault();} if(e.key==='ArrowLeft'){showCurveTip(Math.max(0,tipIdx-1));e.preventDefault();} if(e.key==='Escape') hideCurveTip(); });
+  ['fScr','fW','fK','fO','fOver'].forEach(id=>{ const el=$(id), part={fScr:'scr',fW:'w',fK:'k',fO:'o',fOver:'over'}[id];
+    el.addEventListener('pointermove',e=>showFrameTip(e,part)); el.addEventListener('pointerdown',e=>showFrameTip(e,part));
+    el.addEventListener('pointerleave',e=>{ if(e.pointerType==='mouse') $('ftip').hidden=true; }); });
+  document.addEventListener('pointerdown',e=>{ if(!e.target.closest('#plot')) hideCurveTip(); if(!e.target.closest('#frame')) $('ftip').hidden=true; });
   [...$('preset').querySelectorAll('optgroup')].forEach(og=>$('cmp').appendChild(og.cloneNode(true)));
   $('cmp').querySelectorAll('option[selected]').forEach(o=>o.removeAttribute('selected'));
   $('cmp').value='';
