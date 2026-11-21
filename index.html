@@ -391,7 +391,7 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
 .dock { display: none; }
 
 @media (741px <= width <= 1010px), (max-width: 420px) {
-  .chips { grid-template-columns: repeat(5,minmax(0,1fr)); }
+  .chips { grid-template-columns: repeat(4,minmax(0,1fr)); }
 }
 @media (max-width: 740px) {
   .wrap { width: calc(100% - 36px); }
@@ -654,7 +654,7 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
 <script>
 (function(){
   const $=id=>document.getElementById(id);
-  const TIERS=[6,8,10,12,16,20,24,32,48];
+  const TIERS=[6,8,12,16,24,32,48];
   const fmt=(x,d=1)=>Number.isFinite(x)?x.toFixed(d):'–';
   // 出典: Hugging Face 各モデルのモデルカードと config.json（2026-10 確認）
   const PRESETS={
