@@ -311,6 +311,8 @@ th { color: var(--muted); font-weight: 600; }
 tbody tr:last-child td { border-bottom: 0; }
 td.num { text-align: right; white-space: nowrap; }
 td.num.neg { color: var(--bad); }
+td.num.mixed { color: var(--warn); }
+.context-notice { color: var(--warn); }
 .tierBtn { min-height: 37px; }
 .speed .n { font-size: clamp(1.55rem,3vw,2.2rem); letter-spacing: -.045em; }
 .compact-copy { margin-top: 10px; }
@@ -494,9 +496,10 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
       </div>
       <div>
         <label class="ctx-label" for="ctx">③ 会話の長さ <span class="ctxval" id="ctxVal">8k（8,192トークン）</span></label>
-        <input id="ctx" type="range" min="0" max="7" step="1" value="2" data-uses="k t" aria-describedby="ctxHint">
+        <input id="ctx" type="range" min="0" max="7" step="1" value="2" data-uses="k t" aria-describedby="ctxHint ctxHelp">
         <div class="ticks" aria-hidden="true"><span style="--i:0">2k</span><span style="--i:1">4k</span><span style="--i:2">8k</span><span style="--i:3">16k</span><span style="--i:4">32k</span><span style="--i:5">64k</span><span style="--i:6">128k</span><span style="--i:7">256k</span></div>
-        <div class="hint" id="ctxHint">動かすと結果がその場で変わります。</div>
+        <div class="hint" id="ctxHint">入力と生成を合わせた、設定上のトークン数です。</div>
+        <div class="hint"><span id="ctxHelp"></span> <a id="ctxSource" hidden>公式仕様</a></div>
       </div>
     </section>
 
@@ -596,7 +599,7 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
         <div class="panel metric tbl">
         <h2>VRAM容量別の判定</h2>
         <table>
-          <thead><tr><th>VRAM</th><th>判定</th><th style="text-align:right">残り</th></tr></thead>
+          <thead><tr><th>VRAM</th><th>判定</th><th style="text-align:right">残りの幅</th></tr></thead>
           <tbody id="tiers"></tbody>
         </table>
       </div>
@@ -609,7 +612,7 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
         <div class="ckey" id="ckey"></div>
         <div class="hint" id="curveNote"></div>
         <div class="cmpRes" id="cmpRes" aria-live="polite"></div>
-        <div class="hint">実行環境は、実際に話した長さではなく<b>設定した長さ</b>の分を最初に確保します。</div>
+        <div class="hint">グラフは設定した長さでの試算です。メモリの確保方法や対応上限は実行環境によって変わります。</div>
       </div>
         <div class="panel metric speed" id="speedBox">
         <h2>メモリ帯域から見た生成速度の目安</h2>
@@ -673,6 +676,27 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
     g12:{name:'Gemma 4 12B',p:11.95,hy:{S:40,F:8,kvh:8,hd:256,W:1024,gkvh:1,ghd:512,share:1}},
     g26a4:{name:'Gemma 4 26B-A4B',p:25.2,act:3.8,hy:{S:25,F:5,kvh:8,hd:256,W:1024,gkvh:2,ghd:512,share:1}},
     g31:{name:'Gemma 4 31B',p:30.7,hy:{S:50,F:10,kvh:16,hd:256,W:1024,gkvh:4,ghd:512,share:1}}
+  };
+  // コンテキスト長の標準値と、提供元が案内する拡張範囲。
+  const CONTEXT_SPECS={
+    q4:{standard:32768,extended:131072,requirement:'YaRN',source:'Qwen/Qwen3-4B'},
+    q8:{standard:32768,extended:131072,requirement:'YaRN',source:'Qwen/Qwen3-8B'},
+    q14:{standard:32768,extended:131072,requirement:'YaRN',source:'Qwen/Qwen3-14B'},
+    q32:{standard:32768,extended:131072,requirement:'YaRN',source:'Qwen/Qwen3-32B'},
+    q30a3:{standard:32768,extended:131072,requirement:'YaRN',source:'Qwen/Qwen3-30B-A3B'},
+    q384:{standard:262144,extended:1010000,source:'Qwen/Qwen3.5-4B'},
+    q359:{standard:262144,extended:1010000,source:'Qwen/Qwen3.5-9B'},
+    q3827:{standard:262144,extended:1000000,source:'Qwen/Qwen3.8-27B'},
+    q3635a3:{standard:262144,extended:1010000,source:'Qwen/Qwen3.6-35B-A3B'},
+    l318:{standard:131072,source:'meta-llama/Llama-3.1-8B-Instruct'},
+    goss20:{standard:131072,source:'openai/gpt-oss-20b/blob/main/config.json'},
+    n4:{standard:262144,source:'nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16/blob/main/config.json'},
+    n30:{standard:262144,extended:1000000,source:'nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16'},
+    nl30:{standard:262144,extended:1000000,source:'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16'},
+    ge4:{standard:131072,source:'google/gemma-4-E4B-it'},
+    g12:{standard:262144,source:'google/gemma-4-12B-it'},
+    g26a4:{standard:262144,source:'google/gemma-4-26B-A4B-it'},
+    g31:{standard:262144,source:'google/gemma-4-31B-it'}
   };
   let cur=null, inferredMoe=false;
 
@@ -772,6 +796,41 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
   }
   const cmpModel=()=>PRESETS[$('cmp').value]||null;
 
+  function checkContext(key,ctx){
+    const spec=CONTEXT_SPECS[key];
+    if(!spec) return {text:'モデルが対応する長さは、配布元の仕様で確認してください。'};
+    const standard=spec.standard.toLocaleString();
+    const max=spec.extended??spec.standard;
+    const source='https://huggingface.co/'+spec.source;
+    if(ctx>max){
+      return {
+        source,
+        badge:{cls:'p-bad',txt:'対応上限を超過'},
+        text:'提供元が案内する範囲は '+max.toLocaleString()+' トークンまで。表示したVRAMは容量だけの試算です。'
+      };
+    }
+    if(ctx>spec.standard){
+      const requirement=spec.requirement||'実行環境での拡張設定';
+      return {
+        source,
+        badge:{cls:'p-warn',txt:'拡張設定が必要'},
+        text:'標準は '+standard+' トークン。'+max.toLocaleString()+' まで使うには '+requirement+' が必要です。'
+      };
+    }
+    return {source,text:'提供元の標準は '+standard+' トークン。実行環境の上限も確認してください。'};
+  }
+
+  function remainingRange(usable,low,high){
+    // 0 をまたぐ範囲が、表示の丸めで消えないよう外側に丸める。
+    const min=Math.floor((usable-high+1e-9)*10)/10;
+    const max=Math.ceil((usable-low-1e-9)*10)/10;
+    const signed=n=>(n>0?'+':'')+fmt(n);
+    return {
+      text:signed(min)+'〜'+signed(max)+' GB',
+      tone:usable<low?' neg':usable<high?' mixed':''
+    };
+  }
+
   function kvFull(c){
     if(cur&&cur.lin){ const l=cur.lin; return 4*l.N*l.kvh*l.hd*c/1e9; }
     if(cur&&cur.hy){ const h=cur.hy; return 4*(h.S*h.kvh*h.hd+h.F*h.gkvh*h.ghd)*c*h.share/1e9; }
@@ -784,6 +843,13 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
     if(tHi<=usable*0.9) return {cls:'p-ok',txt:'載る見込み'};
     if(tLo<=usable) return {cls:'p-warn',txt:'ギリギリ'};
     return {cls:'p-bad',txt:'溢れる'};
+  }
+
+  function judgeWithContext(v,low,high,fit){
+    const memory=judge(v,low,high);
+    // 拡張が必要でも、容量の不足が既に分かるときはそちらを先に知らせる。
+    if(fit.badge?.cls==='p-warn'&&memory.cls==='p-bad') return memory;
+    return fit.badge||memory;
   }
 
   // 判定の言い換え（しきい値は judge() のまま）
@@ -839,9 +905,21 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
     $('curveNote').textContent='会話の長さ'+ctx.toLocaleString()+'トークンで、会話の記憶は約'+fmt(now,2)+'GB。'+note;
     // 比較モデルの合計と、選んだGPUでの判定（量子化は今の選択を使う）
     if(cm){
-      const [lo,hi]=$('quant').value.split(',').map(Number);
-      const ck=kvOf(cm,ctx), cLo=cm.p*lo/8+ck+0.5, cHi=cm.p*hi/8+ck+1.0, cj=judge(gpu,cLo,cHi);
-      $('cmpRes').innerHTML='<b>'+cm.name+'</b>：会話の記憶 約'+fmt(ck,2)+'GB、必要 '+fmt(cLo)+'〜'+fmt(cHi)+'GB → '+gpu+'GBのGPUで <span class="pill '+cj.cls+'">'+cj.txt+'</span>'+(cm.hy?'<br><span class="hint">'+cm.name+'の線は実行環境が対応している場合です。</span>':'');
+      const quant=$('quant').selectedOptions[0];
+      const [lo,hi]=quant.value.split(',').map(Number);
+      const ck=kvOf(cm,ctx), cLo=cm.p*lo/8+ck+0.5, cHi=cm.p*hi/8+ck+1.0;
+      const fit=checkContext($('cmp').value,ctx);
+      const cj=judgeWithContext(gpu,cLo,cHi,fit);
+      $('cmpRes').innerHTML='<div><b>'+cm.name+'</b>：会話の記憶 約'+fmt(ck,2)+'GB、必要 '+fmt(cLo)+'〜'+fmt(cHi)+'GB</div>'
+        +'<div>'+gpu+'GBのGPUで <span class="pill '+cj.cls+'">'+cj.txt+'</span></div>'
+        +'<div class="hint" id="cmpQuant"></div>';
+      $('cmpQuant').textContent='両モデル共通の量子化：'+quant.textContent;
+      if(fit.badge||cm.hy){
+        const detail=document.createElement('div');
+        detail.className='hint';
+        detail.textContent=fit.badge?fit.text:cm.name+'の線は実行環境が対応している場合です。';
+        $('cmpRes').appendChild(detail);
+      }
     } else $('cmpRes').textContent='';
   }
 
@@ -887,7 +965,7 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
     placeTip(tip,fr,e.clientX-b.left,0,true);
   }
 
-  function drawFrame(v,wMid,kvGB,oMid,tLo,tHi){
+  function drawFrame(v,wMid,kvGB,oMid,j){
     const scr=$('scr').checked?1:0, need=scr+wMid+kvGB+oMid;
     const S=Math.max(v,need)*1.06, pc=x=>(x/S*100)+'%';
     let x=0; const put=(id,w)=>{ const e=$(id); e.style.left=pc(x); e.style.width=pc(w); x+=w; };
@@ -896,17 +974,19 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
     const line=scr+(v-scr)*0.9; $('f90').style.left=pc(line); $('f90t').style.left=pc(line); $('fRed').style.left=pc(line); $('fRed').style.width=pc(v-line);
     const ov=$('fOver'); if(need>v){ ov.style.left=pc(v); ov.style.width=pc(need-v); ov.hidden=false; } else { ov.style.width='0'; ov.hidden=true; }
     FV={v,wLo:FW[0],wHi:FW[1],kv:kvGB,over:Math.max(0,need-v)};
-    const j=judge(v,tLo,tHi);
     $('vGpu').textContent=v+' GB のGPU';
     const pill=$('fPill'); pill.className='pill big '+j.cls; pill.textContent=j.txt;
-    $('vMean').textContent=MEAN[j.cls];
     $('fW').setAttribute('aria-label','モデル本体 約'+fmt(wMid)+'GB'); $('fK').setAttribute('aria-label','会話の記憶 約'+fmt(kvGB,2)+'GB'); $('fO').setAttribute('aria-label','余白 約0.75GB');
-    return j;
   }
 
   function calc(){
     $('moeRow').hidden=!$('moe').checked;
     const ctx=getCtx();
+    const fit=checkContext($('preset').value,ctx);
+    $('ctxHelp').textContent=fit.text;
+    $('ctxHelp').classList.toggle('context-notice',!!fit.badge);
+    $('ctxSource').hidden=!fit.source;
+    if(fit.source) $('ctxSource').href=fit.source;
     $('ctxVal').textContent=CTXL[+$('ctx').value]+'（'+ctx.toLocaleString()+'トークン）'; $('ctx').setAttribute('aria-valuetext',ctx.toLocaleString()+'トークン');
     $('chips').innerHTML=TIERS.map(v=>'<button type="button" class="chip" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+'GB</button>').join('');
 
@@ -945,14 +1025,17 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
 
     drawCurve(P,ctx);
     FW=[wLo,wHi];
-    const j=drawFrame(gpu,wMid,kvGB,oMid,tLo,tHi);
+    const j=judgeWithContext(gpu,tLo,tHi,fit);
+    drawFrame(gpu,wMid,kvGB,oMid,j);
+    $('vMean').textContent=fit.badge&&j===fit.badge?fit.text:MEAN[j.cls];
     const scr=$('scr').checked?1:0;
     $('tiers').innerHTML=TIERS.map(v=>{
-      const t=judge(v,tLo,tHi), rest=v-scr-mid;
-      return '<tr'+(v===gpu?' class="sel"':'')+'><td><button type="button" class="tierBtn" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+' GB</button></td><td><span class="pill '+t.cls+'">'+t.txt+'</span></td><td class="num'+(rest<0?' neg':'')+'">'+(rest>=0?'+':'')+fmt(rest)+' GB</td></tr>';
+      const t=judgeWithContext(v,tLo,tHi,fit);
+      const rest=remainingRange(v-scr,tLo,tHi);
+      return '<tr'+(v===gpu?' class="sel"':'')+'><td><button type="button" class="tierBtn" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+' GB</button></td><td><span class="pill '+t.cls+'">'+t.txt+'</span></td><td class="num'+rest.tone+'">'+rest.text+'</td></tr>';
     }).join('');
-    const rest=gpu-scr-mid;
-    $('vRest').textContent='このGPUで使えるのは約'+fmt(gpu-scr)+'GB'+(scr?'（画面表示用に1GB控除）':'（画面表示分の控除なし）')+'。残りは約'+(rest>=0?'+':'')+fmt(rest)+'GB。';
+    const rest=remainingRange(gpu-scr,tLo,tHi);
+    $('vRest').textContent='このGPUで使えるのは約'+fmt(gpu-scr)+'GB'+(scr?'（画面表示用に1GB控除）':'（画面表示分の控除なし）')+'。残りの目安は '+rest.text+'（マイナスは不足）。';
     $('dNeed').textContent='必要 '+fmt(tLo)+'〜'+fmt(tHi)+'GB ／ '+gpu+'GB';
     const dp=$('dPill'); dp.className='pill '+j.cls; dp.textContent=j.txt;
     $('live').textContent='必要なVRAM 約'+fmt(tLo)+'〜'+fmt(tHi)+'GB。会話の記憶 約'+fmt(kvGB,2)+'GB。'+gpu+'GBのGPUでは「'+j.txt+'」。';
