@@ -267,6 +267,11 @@ input[type="range"] {
 .verdict .big { min-width: 0; }
 .verdict .n { color: #9bf0ff; text-shadow: 0 0 24px #34d7ff35; }
 .vmean { font-size: .87rem; }
+.decision { border-top: 1px solid var(--line); padding-top: 10px; font-size: .87rem; }
+.decision p + p { margin-top: 6px; }
+.decision-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; }
+.compare-context td:last-child { text-align: right; }
+.compare-context .tierBtn { white-space: nowrap; }
 .verdict .hint { margin-top: 0; }
 .verdict .check { border-top: 1px solid var(--line); padding-top: 10px; font-size: .8rem; }
 
@@ -526,6 +531,16 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
           <div class="tip" id="ftip" hidden></div>
         </div>
         <div class="fkey"><span><i class="k-cap"></i>枠線＝VRAM</span><span><i class="k-90"></i>点線＝使用可能容量の9割</span><span><i class="k-scr"></i>斜線＝画面表示</span><span><i class="k-over"></i>赤＝溢れる分</span></div>
+        <div class="decision" id="decision">
+          <p id="decisionNext"></p>
+          <p id="decisionTier" hidden></p>
+          <div class="decision-links">
+            <button type="button" class="tierBtn" id="tryContext" hidden></button>
+            <a href="#context-comparison">会話の長さを比較する</a>
+            <a href="#model-finder" id="findModelsLink">今のGPUで試せるモデルを探す</a>
+            <a href="https://note.com/gusta_ad_ai/n/n96a3cb223d82">Windowsで確かめる手順・GPU購入ガイド</a>
+          </div>
+        </div>
         </div>
         <label class="check"><input type="checkbox" id="scr" checked> このGPUで画面も映している（1GB引く）</label>
     </section>
@@ -548,6 +563,12 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
               <option value="2.6,3.4">Q2_K（約3bit）</option>
             </select>
             <div class="hint">bit数に幅があるのは、層ごとに精度を変える方式だからです。小さいモデルほど上限側に寄ります（4Bの Q4_K_M で約5.7bit相当の実例あり）。</div>
+          </div>
+          <div>
+            <label for="weightGB">モデルファイルの容量（GB・任意）</label>
+            <input id="weightGB" type="number" inputmode="decimal" min="0.01" step="any" placeholder="例: 4.68" aria-describedby="weightNote" data-uses="w t">
+            <div class="hint" id="weightNote">使う量子化のテキスト用GGUFの容量を10進GBで入力。分割ファイルは合計します。モデル本体の概算に使います。</div>
+            <div class="hint" id="weightInvalid" hidden>0.01以上の有限な値を入力してください。入力が有効になるまで、モデル本体はパラメータ数から見積もります。</div>
           </div>
           <div>
             <label for="name">モデル名（一覧に無いとき）</label>
@@ -599,12 +620,32 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
         <div class="panel metric tbl">
         <h2>VRAM容量別の判定</h2>
         <table>
-          <thead><tr><th>VRAM</th><th>判定</th><th style="text-align:right">残りの幅</th></tr></thead>
+          <thead><tr><th>VRAM</th><th>判定</th><th style="text-align:right">残りの幅</th><th>余裕がある長さ</th></tr></thead>
           <tbody id="tiers"></tbody>
         </table>
+        <div class="hint">余裕がある長さは、拡張設定なしで収まる見込みのうち、この計算機で選べる最長の値です。</div>
       </div>
       </div>
       <div class="metric-stack">
+        <div class="panel metric tbl compare-context" id="context-comparison">
+          <h2>手持ちGPUで会話の長さを比較</h2>
+          <p class="hint" id="contextComparisonNote"></p>
+          <table aria-labelledby="contextComparisonNote">
+            <thead><tr><th scope="col">長さ</th><th scope="col">必要VRAM</th><th scope="col">判定</th></tr></thead>
+            <tbody id="contextRows"></tbody>
+          </table>
+        </div>
+        <details class="panel metric tbl" id="model-finder">
+          <summary>今のGPUで試せるモデル <span id="modelCount"></span></summary>
+          <div class="inner">
+            <p class="hint" id="modelFinderNote"></p>
+            <table id="modelTable" aria-labelledby="modelFinderNote">
+              <thead><tr><th scope="col">モデル</th><th scope="col">必要VRAMの目安</th></tr></thead>
+              <tbody id="modelRows"></tbody>
+            </table>
+            <p id="noModels" class="hint" hidden>この設定で余裕を持って収まる候補はありません。会話の長さか量子化を変えてください。</p>
+          </div>
+        </details>
         <div class="panel metric curve">
         <h2>会話の長さと記憶（GB）</h2>
         <div class="cmpBox"><label for="cmp">比較するモデル</label><select id="cmp"><option value="">比べない</option></select></div>
@@ -714,6 +755,7 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
   }
 
   function applyPreset(){
+    $('weightGB').value='';
     const previous=cur;
     cur=PRESETS[$('preset').value]||null;
     const note=$('presetNote');
@@ -858,6 +900,77 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
     'p-warn':'動くこともありますが、溢れると急に遅くなります。会話の長さを短くするか、量子化を小さくすると余裕が出ます。',
     'p-bad':'VRAMに入りきりません。動いても、溢れた分はメインメモリで処理されるので大幅に遅くなります。'};
   const CTXL=['2k','4k','8k','16k','32k','64k','128k','256k'];
+
+  function memoryRange(wLo,wHi,kvGB){
+    return {low:wLo+kvGB+0.5,high:wHi+kvGB+1};
+  }
+
+  function renderDecision(current,options,fit,low,high){
+    const next=$('decisionNext');
+    const capacity=$('decisionTier');
+    const retry=$('tryContext');
+    const shorter=options.filter(o=>o.ctx<current&&o.verdict.cls==='p-ok').at(-1);
+    const currentFits=!fit.badge&&judge(gpu,low,high).cls==='p-ok';
+    retry.hidden=currentFits||!shorter;
+    if(shorter){
+      retry.dataset.context=shorter.index;
+      retry.textContent=shorter.label+'で再計算';
+    }
+    if(currentFits){
+      next.textContent='この設定で試す。Windowsのタスク マネージャーで、普段の作業中の専用・共有GPUメモリと待ち時間を確認できます。';
+    }else if(shorter){
+      next.textContent='会話の長さを '+shorter.label+' にすると、今のGPUに収まる見込みです。';
+    }else if(fit.badge){
+      next.textContent='配布元と実行環境が対応する会話の長さに直してから、必要なVRAMを確認してください。';
+    }else{
+      next.textContent='会話を短くしても、余裕を持って収まる設定は見つかりませんでした。量子化を下げるか、小さなモデルを試してください。';
+    }
+    capacity.hidden=currentFits||!!fit.badge;
+    const tier=TIERS.find(size=>size>gpu&&judge(size,low,high).cls==='p-ok');
+    capacity.textContent=tier
+      ? '同じ設定で使う場合の容量の目安は '+tier+' GB（掲載している容量の中で最小）。'
+      : '同じ設定で余裕を持って収まる容量は、掲載している範囲にありません。';
+  }
+
+  function renderContextOptions(P,ctx,wLo,wHi){
+    const key=$('preset').value;
+    const options=CTXS.map((length,index)=>{
+      const fit=checkContext(key,length);
+      const {low,high}=memoryRange(wLo,wHi,kv(P,length).gb);
+      return {ctx:length,index,label:CTXL[index],low,high,fit,verdict:judgeWithContext(gpu,low,high,fit)};
+    });
+    const quant=$('quant').selectedOptions[0].textContent.split('（')[0];
+    $('contextComparisonNote').textContent=gpu+' GB ・ '+quant+'。長さを選ぶと同じ量子化で再計算します。'
+      +(key?'':' モデルの対応上限は配布元で確認してください。');
+    $('contextRows').innerHTML=options.map(o=>{
+      const selected=o.ctx===ctx;
+      const canSelect=!selected&&o.fit.badge?.txt!=='対応上限を超過';
+      const label=canSelect
+        ? '<button type="button" class="tierBtn" data-context="'+o.index+'" aria-label="'+o.label+'で再計算">'+o.label+'</button>'
+        : o.label+(selected?'（現在）':'');
+      return '<tr'+(selected?' class="sel" aria-current="true"':'')+'><th scope="row">'+label+'</th>'
+        +'<td>'+fmt(o.low)+'〜'+fmt(o.high)+' GB</td><td><span class="pill '+o.verdict.cls+'">'+o.verdict.txt+'</span></td></tr>';
+    }).join('');
+    return options;
+  }
+
+  function renderModelOptions(ctx,quant,lo,hi){
+    const mxfp4=quant==='4.25,4.6';
+    const candidates=Object.entries(PRESETS)
+      .filter(([key])=>!mxfp4||key==='goss20')
+      .map(([key,model])=>({
+        key,name:model.name,...memoryRange(model.p*lo/8,model.p*hi/8,kvOf(model,ctx))
+      }))
+      .filter(model=>!checkContext(model.key,ctx).badge&&judge(gpu,model.low,model.high).cls==='p-ok')
+      .sort((a,b)=>a.high-b.high);
+    const quantLabel=$('quant').selectedOptions[0].textContent.split('（')[0];
+    $('modelFinderNote').textContent=gpu+' GB ・ '+quantLabel+' ・ '+ctx.toLocaleString()+'トークン。標準設定で収まる見込みを、必要VRAMが少ない順に表示。各モデルの量子化ファイルの有無は配布元で確認してください。入力したファイル容量は候補一覧には使いません。';
+    $('modelCount').textContent='（'+candidates.length+'件）';
+    $('noModels').hidden=candidates.length>0;
+    $('modelTable').hidden=candidates.length===0;
+    $('modelRows').innerHTML=candidates.map(model=>'<tr><th scope="row"><button type="button" class="tierBtn" data-model="'+model.key+'">'+model.name+'</button></th>'
+      +'<td>'+fmt(model.low)+'〜'+fmt(model.high)+' GB</td></tr>').join('');
+  }
 
   // 4: 数字を古い値から新しい値へ動かす
   function tween(el,from,to,render){
@@ -1005,13 +1118,19 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
 
     const quant=$('quant').value;
     const [lo,hi]=quant.split(',').map(Number);
-    const wLo=P*lo/8, wHi=P*hi/8;
+    const weight=$('weightGB');
+    const fileSize=weight.valueAsNumber;
+    const useFileSize=fileSize>=0.01&&Number.isFinite(fileSize*100);
+    const invalidFileSize=(weight.value!==''||weight.validity.badInput)&&!useFileSize;
+    $('weightInvalid').hidden=!invalidFileSize;
+    weight.setAttribute('aria-invalid',String(invalidFileSize));
+    const wLo=useFileSize?fileSize:P*lo/8, wHi=useFileSize?fileSize:P*hi/8;
     const k=kv(P,ctx); const kvGB=k.gb;
-    const oLo=0.5, oHi=1.0;
-    const tLo=wLo+kvGB+oLo, tHi=wHi+kvGB+oHi, mid=(tLo+tHi)/2;
+    const {low:tLo,high:tHi}=memoryRange(wLo,wHi,kvGB);
+    const mid=(tLo+tHi)/2;
 
     tween($('total'),prev&&[prev.tLo,prev.tHi],[tLo,tHi],a=>fmt(a[0])+'〜'+fmt(a[1]));
-    tween($('lw'),prev&&[prev.wLo,prev.wHi],[wLo,wHi],a=>fmt(a[0])+'〜'+fmt(a[1])+'GB');
+    tween($('lw'),prev&&[prev.wLo,prev.wHi],[wLo,wHi],a=>(useFileSize?fmt(a[0],2):fmt(a[0])+'〜'+fmt(a[1]))+'GB');
     tween($('lk'),prev&&[prev.kvGB],[kvGB],a=>fmt(a[0],2)+'GB'+(k.exact?'':'（多めの目安）'));
     $('lo').textContent='0.5〜1.0GB';
     if(prev&&Math.abs(mid-prev.mid)>=0.05){
@@ -1028,11 +1147,15 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
     const j=judgeWithContext(gpu,tLo,tHi,fit);
     drawFrame(gpu,wMid,kvGB,oMid,j);
     $('vMean').textContent=fit.badge&&j===fit.badge?fit.text:MEAN[j.cls];
+    const contexts=renderContextOptions(P,ctx,wLo,wHi);
+    renderDecision(ctx,contexts,fit,tLo,tHi);
+    renderModelOptions(ctx,quant,lo,hi);
     const scr=$('scr').checked?1:0;
     $('tiers').innerHTML=TIERS.map(v=>{
       const t=judgeWithContext(v,tLo,tHi,fit);
       const rest=remainingRange(v-scr,tLo,tHi);
-      return '<tr'+(v===gpu?' class="sel"':'')+'><td><button type="button" class="tierBtn" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+' GB</button></td><td><span class="pill '+t.cls+'">'+t.txt+'</span></td><td class="num'+rest.tone+'">'+rest.text+'</td></tr>';
+      const max=contexts.filter(o=>!o.fit.badge&&judge(v,o.low,o.high).cls==='p-ok').at(-1);
+      return '<tr'+(v===gpu?' class="sel"':'')+'><td><button type="button" class="tierBtn" data-v="'+v+'" aria-pressed="'+(v===gpu)+'">'+v+' GB</button></td><td><span class="pill '+t.cls+'">'+t.txt+'</span></td><td class="num'+rest.tone+'">'+rest.text+'</td><td>'+(max?.label??'—')+'</td></tr>';
     }).join('');
     const rest=remainingRange(gpu-scr,tLo,tHi);
     $('vRest').textContent='このGPUで使えるのは約'+fmt(gpu-scr)+'GB'+(scr?'（画面表示用に1GB控除）':'（画面表示分の控除なし）')+'。残りの目安は '+rest.text+'（マイナスは不足）。';
@@ -1056,7 +1179,7 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
     }
 
     const lines=[
-      ['w','モデル本体 = '+P+'B × '+lo+'〜'+hi+'bit ÷ 8 = '+fmt(wLo)+'〜'+fmt(wHi)+' GB'],
+      ['w',useFileSize?'モデル本体 = 入力したファイル容量 '+fileSize+' GB':'モデル本体 = '+P+'B × '+lo+'〜'+hi+'bit ÷ 8 = '+fmt(wLo)+'〜'+fmt(wHi)+' GB'],
       ['k','会話の記憶 = '+k.how+'（'+ctx.toLocaleString()+' トークン） = '+fmt(kvGB,2)+' GB'],
       ['o','余白       = 0.5〜1.0 GB'],
       ['t','合計       = '+fmt(tLo)+'〜'+fmt(tHi)+' GB']];
@@ -1098,10 +1221,29 @@ footer { padding: 20px 0 34px; color: var(--muted); font-size: .78rem; }
   $('cmp').querySelectorAll('option[selected]').forEach(o=>o.removeAttribute('selected'));
   $('cmp').value='';
   pickGpu($('tiers'),'.tierBtn');
+  function applyContext(button){
+    $('ctx').value=button.dataset.context;
+    calc();
+    $('ctx').focus();
+  }
+  $('tryContext').addEventListener('click',e=>applyContext(e.currentTarget));
+  $('contextRows').addEventListener('click',e=>{
+    const button=e.target.closest('[data-context]');
+    if(button) applyContext(button);
+  });
+  $('findModelsLink').addEventListener('click',()=>$('model-finder').open=true);
+  $('modelRows').addEventListener('click',e=>{
+    const button=e.target.closest('[data-model]');
+    if(!button) return;
+    $('preset').value=button.dataset.model;
+    applyPreset();
+    $('preset').focus();
+  });
   $('scr').addEventListener('change',calc);
 
   $('preset').addEventListener('change',applyPreset);
-  $('name').addEventListener('input',()=>{parseName();calc();});
+  $('name').addEventListener('input',()=>{$('weightGB').value='';parseName();calc();});
+  ['quant','params'].forEach(id=>$(id).addEventListener('input',()=>{$('weightGB').value='';}));
   ['moe','active'].forEach(id=>$(id).addEventListener('input',()=>{inferredMoe=false;}));
   ['layers','kvh','hd'].forEach(id=>$(id).addEventListener('input',()=>{ if(cur&&(cur.hy||cur.lin)){cur=null;$('preset').value='';$('presetNote').textContent='「詳しい設定」で入力してください。';} }));
   $('app').addEventListener('input',e=>{ if(e.target.matches('input,select')&&e.target.id!=='name'&&e.target.id!=='preset') calc(); });
